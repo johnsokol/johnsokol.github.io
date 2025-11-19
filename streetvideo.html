@@ -1,0 +1,438 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MJPEG Player</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            margin-bottom: 20px;
+            color: #4a9eff;
+        }
+        
+        .canvas-container {
+            background: #000;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        canvas {
+            max-width: 100%;
+            max-height: 600px;
+            display: block;
+        }
+        
+        .controls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background: #4a9eff;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: #3a8eef;
+        }
+        
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        
+        .seek-bar {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #555;
+            outline: none;
+            border-radius: 3px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #4a9eff;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #4a9eff;
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+        }
+        
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #aaa;
+            font-size: 14px;
+        }
+        
+        .fps-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        input[type="number"] {
+            width: 60px;
+            padding: 5px;
+            background: #3a3a3a;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: #fff;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #2a2a2a;
+            border-radius: 8px;
+            color: #aaa;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #4a9eff;
+            padding: 20px;
+        }
+        
+        .error {
+            color: #ff4a4a;
+            padding: 15px;
+            background: #2a2a2a;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MJPEG Player</h1>
+        
+        <div id="loading" class="loading">
+            Loading video...
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div class="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+        
+        <div class="controls" id="controls" style="display: none;">
+            <div class="button-group">
+                <button id="prevBtn">◄ Previous</button>
+                <button id="playBtn">▶ Play</button>
+                <button id="nextBtn">Next ►</button>
+            </div>
+            
+            <div class="seek-bar">
+                <input type="range" id="seekBar" min="0" max="0" value="0">
+            </div>
+            
+            <div class="info-bar">
+                <div id="frameInfo">Frame: 0 / 0</div>
+                <div class="fps-control">
+                    <label for="fpsInput">FPS:</label>
+                    <input type="number" id="fpsInput" min="1" max="60" value="30">
+                </div>
+            </div>
+        </div>
+        
+        <div class="status" id="status" style="display: none;">
+            <p>Total frames: <span id="totalFrames">0</span></p>
+            <p>Duration: <span id="duration">0</span>s at <span id="currentFps">30</span> FPS</p>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // CONFIGURATION - Change this to your video file name
+        // ========================================
+        const VIDEO_FILE = 'street1.xjpg';  // Change this to your actual filename
+        // ========================================
+        
+        let frames = [];
+        let currentFrame = 0;
+        let isPlaying = false;
+        let fps = 30;
+        let playInterval = null;
+        
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const seekBar = document.getElementById('seekBar');
+        const playBtn = document.getElementById('playBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const fpsInput = document.getElementById('fpsInput');
+        const frameInfo = document.getElementById('frameInfo');
+        const controls = document.getElementById('controls');
+        const status = document.getElementById('status');
+        const loading = document.getElementById('loading');
+        const errorDiv = document.getElementById('error');
+        
+        // Auto-load video on page load
+        window.addEventListener('load', async () => {
+            await loadVideoFromURL(VIDEO_FILE);
+        });
+        
+        // Load video from URL
+        async function loadVideoFromURL(url) {
+            loading.style.display = 'block';
+            errorDiv.style.display = 'none';
+            controls.style.display = 'none';
+            status.style.display = 'none';
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Failed to load video: ${response.status} ${response.statusText}`);
+                }
+                
+                const arrayBuffer = await response.arrayBuffer();
+                await parseMJPEG(arrayBuffer);
+                
+            } catch (error) {
+                console.error('Error loading video:', error);
+                loading.style.display = 'none';
+                errorDiv.textContent = 'Error loading video: ' + error.message + '. Make sure "' + url + '" is in the same directory as this HTML file.';
+                errorDiv.style.display = 'block';
+            }
+        }
+        
+        // Parse MJPEG data
+        async function parseMJPEG(arrayBuffer) {
+            // Clean up old frames
+            frames.forEach(url => URL.revokeObjectURL(url));
+            frames = [];
+            
+            try {
+                const uint8Array = new Uint8Array(arrayBuffer);
+                
+                // Find JPEG boundaries (FF D8 = start, FF D9 = end)
+                const extractedFrames = [];
+                let i = 0;
+                
+                while (i < uint8Array.length - 1) {
+                    // Look for JPEG start marker (FF D8)
+                    if (uint8Array[i] === 0xFF && uint8Array[i + 1] === 0xD8) {
+                        const startPos = i;
+                        i += 2;
+                        
+                        // Look for JPEG end marker (FF D9)
+                        while (i < uint8Array.length - 1) {
+                            if (uint8Array[i] === 0xFF && uint8Array[i + 1] === 0xD9) {
+                                const endPos = i + 2;
+                                
+                                // Extract JPEG data
+                                const jpegData = uint8Array.slice(startPos, endPos);
+                                const blob = new Blob([jpegData], { type: 'image/jpeg' });
+                                const url = URL.createObjectURL(blob);
+                                extractedFrames.push(url);
+                                
+                                i = endPos;
+                                break;
+                            }
+                            i++;
+                        }
+                    }
+                    i++;
+                }
+                
+                if (extractedFrames.length === 0) {
+                    throw new Error('No JPEG frames found in file');
+                }
+                
+                frames = extractedFrames;
+                currentFrame = 0;
+                seekBar.max = frames.length - 1;
+                seekBar.value = 0;
+                
+                // Load first frame
+                await loadFrame(0);
+                
+                // Update UI
+                updateInfo();
+                controls.style.display = 'block';
+                status.style.display = 'block';
+                loading.style.display = 'none';
+                
+                document.getElementById('totalFrames').textContent = frames.length;
+                updateDuration();
+                
+            } catch (error) {
+                console.error('Error parsing MJPEG:', error);
+                loading.style.display = 'none';
+                errorDiv.textContent = 'Error parsing file: ' + error.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+        
+        // Load and display a frame
+        function loadFrame(frameIndex) {
+            return new Promise((resolve) => {
+                if (frameIndex < 0 || frameIndex >= frames.length) {
+                    resolve();
+                    return;
+                }
+                
+                const img = new Image();
+                img.onload = () => {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    resolve();
+                };
+                img.onerror = resolve;
+                img.src = frames[frameIndex];
+            });
+        }
+        
+        // Update frame info
+        function updateInfo() {
+            frameInfo.textContent = `Frame: ${currentFrame + 1} / ${frames.length}`;
+            seekBar.value = currentFrame;
+        }
+        
+        // Update duration display
+        function updateDuration() {
+            const duration = (frames.length / fps).toFixed(2);
+            document.getElementById('duration').textContent = duration;
+            document.getElementById('currentFps').textContent = fps;
+        }
+        
+        // Play/Pause button
+        playBtn.addEventListener('click', () => {
+            if (frames.length === 0) return;
+            
+            isPlaying = !isPlaying;
+            
+            if (isPlaying) {
+                playBtn.textContent = '⏸ Pause';
+                playInterval = setInterval(() => {
+                    currentFrame = (currentFrame + 1) % frames.length;
+                    loadFrame(currentFrame);
+                    updateInfo();
+                }, 1000 / fps);
+            } else {
+                playBtn.textContent = '▶ Play';
+                if (playInterval) {
+                    clearInterval(playInterval);
+                    playInterval = null;
+                }
+            }
+        });
+        
+        // Previous frame button
+        prevBtn.addEventListener('click', () => {
+            if (frames.length === 0) return;
+            stopPlayback();
+            currentFrame = (currentFrame - 1 + frames.length) % frames.length;
+            loadFrame(currentFrame);
+            updateInfo();
+        });
+        
+        // Next frame button
+        nextBtn.addEventListener('click', () => {
+            if (frames.length === 0) return;
+            stopPlayback();
+            currentFrame = (currentFrame + 1) % frames.length;
+            loadFrame(currentFrame);
+            updateInfo();
+        });
+        
+        // Seek bar
+        seekBar.addEventListener('input', (e) => {
+            if (frames.length === 0) return;
+            stopPlayback();
+            currentFrame = parseInt(e.target.value);
+            loadFrame(currentFrame);
+            updateInfo();
+        });
+        
+        // FPS input
+        fpsInput.addEventListener('change', (e) => {
+            fps = parseInt(e.target.value) || 30;
+            fps = Math.max(1, Math.min(60, fps));
+            fpsInput.value = fps;
+            updateDuration();
+            
+            // Restart playback if playing
+            if (isPlaying) {
+                stopPlayback();
+                playBtn.click();
+            }
+        });
+        
+        // Stop playback
+        function stopPlayback() {
+            if (isPlaying) {
+                isPlaying = false;
+                playBtn.textContent = '▶ Play';
+                if (playInterval) {
+                    clearInterval(playInterval);
+                    playInterval = null;
+                }
+            }
+        }
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            frames.forEach(url => URL.revokeObjectURL(url));
+        });
+    </script>
+</body>
+</html>
