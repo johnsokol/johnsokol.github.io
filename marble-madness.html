@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Marble Madness - Tilt Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            background: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            border: 3px solid #16213e;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            background: #0f3460;
+            touch-action: none;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+
+        .info-box {
+            background: rgba(22, 33, 62, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e94560;
+            backdrop-filter: blur(10px);
+        }
+
+        .info-item {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .info-label {
+            color: #aaa;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #e94560;
+        }
+
+        #startButton {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #e94560 0%, #c02040 100%);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 8px 32px rgba(233, 69, 96, 0.5);
+            pointer-events: auto;
+            z-index: 100;
+        }
+
+        #startButton:active {
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(22, 33, 62, 0.95);
+            padding: 30px 50px;
+            border-radius: 20px;
+            border: 3px solid #e94560;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            display: none;
+            z-index: 99;
+        }
+
+        .restart-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(22, 33, 62, 0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div class="info-box">
+            <div class="info-item">
+                <div class="info-label">Level</div>
+                <div class="info-value" id="level">1</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Time</div>
+                <div class="info-value" id="time">0.0s</div>
+            </div>
+        </div>
+        <div class="info-box">
+            <div class="info-item">
+                <div class="info-label">Tilt X/Y</div>
+                <div class="info-value" id="tilt" style="font-size: 14px;">0 / 0</div>
+            </div>
+        </div>
+    </div>
+
+    <button id="startButton">Start Game</button>
+    <div id="message"></div>
+    <div class="restart-hint">Lay phone flat (face up) to restart level</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startButton = document.getElementById('startButton');
+        const messageDiv = document.getElementById('message');
+
+        // Set canvas size
+        function resizeCanvas() {
+            const maxWidth = Math.min(window.innerWidth - 40, 600);
+            const maxHeight = Math.min(window.innerHeight - 200, 800);
+            canvas.width = maxWidth;
+            canvas.height = maxHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Game state
+        let gameState = {
+            running: false,
+            level: 1,
+            startTime: 0,
+            marble: { x: 0, y: 0, vx: 0, vy: 0, radius: 15 },
+            accel: { x: 0, y: 0, z: 0 },
+            permissionGranted: false
+        };
+
+        // Level definitions
+        const levels = [
+            {
+                name: "Easy Start",
+                start: { x: 50, y: 50 },
+                goal: { x: 550, y: 750 },
+                walls: [
+                    { x: 0, y: 200, width: 400, height: 20 },
+                    { x: 200, y: 400, width: 400, height: 20 },
+                    { x: 0, y: 600, width: 400, height: 20 }
+                ],
+                holes: [
+                    { x: 300, y: 300, radius: 30 },
+                    { x: 450, y: 500, radius: 30 }
+                ]
+            },
+            {
+                name: "The Maze",
+                start: { x: 50, y: 50 },
+                goal: { x: 550, y: 750 },
+                walls: [
+                    { x: 0, y: 150, width: 500, height: 20 },
+                    { x: 100, y: 300, width: 500, height: 20 },
+                    { x: 0, y: 450, width: 500, height: 20 },
+                    { x: 100, y: 600, width: 500, height: 20 }
+                ],
+                holes: [
+                    { x: 250, y: 225, radius: 25 },
+                    { x: 350, y: 375, radius: 25 },
+                    { x: 250, y: 525, radius: 25 },
+                    { x: 450, y: 675, radius: 25 }
+                ]
+            },
+            {
+                name: "Challenge",
+                start: { x: 50, y: 400 },
+                goal: { x: 550, y: 400 },
+                walls: [
+                    { x: 150, y: 0, width: 20, height: 300 },
+                    { x: 300, y: 150, width: 20, height: 300 },
+                    { x: 450, y: 0, width: 20, height: 300 },
+                    { x: 150, y: 500, width: 20, height: 300 },
+                    { x: 300, y: 350, width: 20, height: 300 },
+                    { x: 450, y: 500, width: 20, height: 300 }
+                ],
+                holes: [
+                    { x: 225, y: 350, radius: 25 },
+                    { x: 225, y: 450, radius: 25 },
+                    { x: 375, y: 250, radius: 25 },
+                    { x: 375, y: 550, radius: 25 }
+                ]
+            }
+        ];
+
+        function getCurrentLevel() {
+            return levels[(gameState.level - 1) % levels.length];
+        }
+
+        // Request permission and start
+        startButton.addEventListener('click', async () => {
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                try {
+                    const permissionState = await DeviceMotionEvent.requestPermission();
+                    if (permissionState === 'granted') {
+                        gameState.permissionGranted = true;
+                        startGame();
+                    }
+                } catch (error) {
+                    console.error('Permission error:', error);
+                    alert('Please allow motion sensor access to play');
+                }
+            } else {
+                gameState.permissionGranted = true;
+                startGame();
+            }
+        });
+
+        function startGame() {
+            startButton.style.display = 'none';
+            window.addEventListener('devicemotion', handleMotion);
+            initLevel();
+            gameState.running = true;
+            gameState.startTime = Date.now();
+            gameLoop();
+        }
+
+        function initLevel() {
+            const level = getCurrentLevel();
+            gameState.marble.x = level.start.x;
+            gameState.marble.y = level.start.y;
+            gameState.marble.vx = 0;
+            gameState.marble.vy = 0;
+            gameState.startTime = Date.now();
+            document.getElementById('level').textContent = gameState.level;
+        }
+
+        function handleMotion(event) {
+            const accel = event.accelerationIncludingGravity;
+            if (accel) {
+                // X and Y for movement, Z for restart detection
+                gameState.accel.x = accel.x || 0;
+                gameState.accel.y = accel.y || 0;
+                gameState.accel.z = accel.z || 0;
+
+                // Update UI
+                document.getElementById('tilt').textContent = 
+                    `${gameState.accel.x.toFixed(1)} / ${gameState.accel.y.toFixed(1)}`;
+
+                // Check for restart condition (phone laid flat, Z near 0)
+                if (Math.abs(gameState.accel.z) < 2 && gameState.running) {
+                    restartLevel();
+                }
+            }
+        }
+
+        function restartLevel() {
+            showMessage('🔄 Restarting Level!', 1000);
+            initLevel();
+        }
+
+        function showMessage(text, duration = 2000) {
+            messageDiv.textContent = text;
+            messageDiv.style.display = 'block';
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, duration);
+        }
+
+        function updatePhysics() {
+            const marble = gameState.marble;
+            
+            // Apply acceleration (inverted for natural feel)
+            const sensitivity = 0.3;
+            marble.vx += -gameState.accel.x * sensitivity;
+            marble.vy += gameState.accel.y * sensitivity;
+
+            // Friction
+            marble.vx *= 0.98;
+            marble.vy *= 0.98;
+
+            // Speed limit
+            const maxSpeed = 15;
+            const speed = Math.sqrt(marble.vx * marble.vx + marble.vy * marble.vy);
+            if (speed > maxSpeed) {
+                marble.vx = (marble.vx / speed) * maxSpeed;
+                marble.vy = (marble.vy / speed) * maxSpeed;
+            }
+
+            // Update position
+            marble.x += marble.vx;
+            marble.y += marble.vy;
+
+            // Canvas boundaries with bounce
+            if (marble.x - marble.radius < 0) {
+                marble.x = marble.radius;
+                marble.vx = -marble.vx * 0.7;
+            }
+            if (marble.x + marble.radius > canvas.width) {
+                marble.x = canvas.width - marble.radius;
+                marble.vx = -marble.vx * 0.7;
+            }
+            if (marble.y - marble.radius < 0) {
+                marble.y = marble.radius;
+                marble.vy = -marble.vy * 0.7;
+            }
+            if (marble.y + marble.radius > canvas.height) {
+                marble.y = canvas.height - marble.radius;
+                marble.vy = -marble.vy * 0.7;
+            }
+        }
+
+        function checkCollisions() {
+            const level = getCurrentLevel();
+            const marble = gameState.marble;
+
+            // Check walls
+            level.walls.forEach(wall => {
+                // Scale walls to canvas size
+                const scaledWall = {
+                    x: wall.x * canvas.width / 600,
+                    y: wall.y * canvas.height / 800,
+                    width: wall.width * canvas.width / 600,
+                    height: wall.height * canvas.height / 800
+                };
+
+                if (circleRectCollision(marble, scaledWall)) {
+                    // Bounce off wall
+                    const centerX = marble.x;
+                    const centerY = marble.y;
+                    const rectCenterX = scaledWall.x + scaledWall.width / 2;
+                    const rectCenterY = scaledWall.y + scaledWall.height / 2;
+
+                    const dx = centerX - rectCenterX;
+                    const dy = centerY - rectCenterY;
+
+                    if (Math.abs(dx / scaledWall.width) > Math.abs(dy / scaledWall.height)) {
+                        marble.vx = -marble.vx * 0.5;
+                        marble.x += marble.vx;
+                    } else {
+                        marble.vy = -marble.vy * 0.5;
+                        marble.y += marble.vy;
+                    }
+                }
+            });
+
+            // Check holes
+            level.holes.forEach(hole => {
+                const scaledHole = {
+                    x: hole.x * canvas.width / 600,
+                    y: hole.y * canvas.height / 800,
+                    radius: hole.radius * Math.min(canvas.width / 600, canvas.height / 800)
+                };
+
+                const dx = marble.x - scaledHole.x;
+                const dy = marble.y - scaledHole.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < scaledHole.radius) {
+                    showMessage('💀 Fell in a hole!', 1500);
+                    setTimeout(initLevel, 1500);
+                }
+            });
+
+            // Check goal
+            const scaledGoal = {
+                x: level.goal.x * canvas.width / 600,
+                y: level.goal.y * canvas.height / 800,
+                radius: 25 * Math.min(canvas.width / 600, canvas.height / 800)
+            };
+
+            const dx = marble.x - scaledGoal.x;
+            const dy = marble.y - scaledGoal.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < scaledGoal.radius + marble.radius) {
+                gameState.level++;
+                showMessage('🎉 Level Complete!', 1500);
+                setTimeout(initLevel, 1500);
+            }
+        }
+
+        function circleRectCollision(circle, rect) {
+            const closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.width));
+            const closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.height));
+            const dx = circle.x - closestX;
+            const dy = circle.y - closestY;
+            return (dx * dx + dy * dy) < (circle.radius * circle.radius);
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#0f3460';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const level = getCurrentLevel();
+
+            // Draw walls
+            ctx.fillStyle = '#16213e';
+            ctx.strokeStyle = '#e94560';
+            ctx.lineWidth = 2;
+            level.walls.forEach(wall => {
+                const x = wall.x * canvas.width / 600;
+                const y = wall.y * canvas.height / 800;
+                const width = wall.width * canvas.width / 600;
+                const height = wall.height * canvas.height / 800;
+                ctx.fillRect(x, y, width, height);
+                ctx.strokeRect(x, y, width, height);
+            });
+
+            // Draw holes
+            level.holes.forEach(hole => {
+                const x = hole.x * canvas.width / 600;
+                const y = hole.y * canvas.height / 800;
+                const radius = hole.radius * Math.min(canvas.width / 600, canvas.height / 800);
+                
+                // Gradient for 3D effect
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                gradient.addColorStop(0, '#000');
+                gradient.addColorStop(0.7, '#1a1a2e');
+                gradient.addColorStop(1, '#0f3460');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw goal
+            const goalX = level.goal.x * canvas.width / 600;
+            const goalY = level.goal.y * canvas.height / 800;
+            const goalRadius = 25 * Math.min(canvas.width / 600, canvas.height / 800);
+            
+            const goalGradient = ctx.createRadialGradient(goalX, goalY, 0, goalX, goalY, goalRadius);
+            goalGradient.addColorStop(0, '#4ecca3');
+            goalGradient.addColorStop(1, '#2ecc71');
+            
+            ctx.fillStyle = goalGradient;
+            ctx.beginPath();
+            ctx.arc(goalX, goalY, goalRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Draw marble with 3D effect
+            const marble = gameState.marble;
+            
+            // Shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.arc(marble.x + 3, marble.y + 3, marble.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Marble gradient
+            const marbleGradient = ctx.createRadialGradient(
+                marble.x - marble.radius * 0.3, 
+                marble.y - marble.radius * 0.3, 
+                marble.radius * 0.1,
+                marble.x, 
+                marble.y, 
+                marble.radius
+            );
+            marbleGradient.addColorStop(0, '#ff6b9d');
+            marbleGradient.addColorStop(0.5, '#e94560');
+            marbleGradient.addColorStop(1, '#c02040');
+
+            ctx.fillStyle = marbleGradient;
+            ctx.beginPath();
+            ctx.arc(marble.x, marble.y, marble.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Marble highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.beginPath();
+            ctx.arc(marble.x - marble.radius * 0.3, marble.y - marble.radius * 0.3, marble.radius * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Update time
+            if (gameState.running) {
+                const elapsed = (Date.now() - gameState.startTime) / 1000;
+                document.getElementById('time').textContent = elapsed.toFixed(1) + 's';
+            }
+        }
+
+        function gameLoop() {
+            if (gameState.running) {
+                updatePhysics();
+                checkCollisions();
+                draw();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+    </script>
+</body>
+</html>

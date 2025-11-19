@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>R2-D2 Speech Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 100%);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #4a9eff, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(74, 158, 255, 0.5);
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #aaa;
+            font-size: 0.9em;
+        }
+
+        .droid-display {
+            background: #0a0a15;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 2px solid #4a9eff;
+            box-shadow: 0 0 20px rgba(74, 158, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .droid-eye {
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, #4a9eff 0%, #0066cc 100%);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            box-shadow: 0 0 30px rgba(74, 158, 255, 0.8);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .droid-eye.active {
+            animation: pulse 0.1s ease-in-out;
+            box-shadow: 0 0 50px rgba(74, 158, 255, 1);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .waveform {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 60px;
+            gap: 4px;
+        }
+
+        .bar {
+            width: 6px;
+            background: linear-gradient(to top, #4a9eff, #00d4ff);
+            border-radius: 3px;
+            transition: height 0.1s ease;
+            height: 5px;
+            box-shadow: 0 0 10px rgba(74, 158, 255, 0.5);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #4a9eff 0%, #0066cc 100%);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            font-size: 1em;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(74, 158, 255, 0.3);
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 158, 255, 0.5);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .mood-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .mood-btn {
+            padding: 10px 20px;
+            font-size: 0.9em;
+            background: rgba(74, 158, 255, 0.2);
+            border: 1px solid #4a9eff;
+        }
+
+        .mood-btn.active {
+            background: linear-gradient(135deg, #4a9eff 0%, #0066cc 100%);
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 20px;
+            color: #4a9eff;
+            font-size: 0.9em;
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>R2-D2</h1>
+        <p class="subtitle">Astromech Droid Speech Simulator</p>
+        
+        <div class="droid-display">
+            <div class="droid-eye" id="eye"></div>
+            <div class="waveform" id="waveform">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="speak('happy')">😊 Happy</button>
+            <button onclick="speak('worried')">😰 Worried</button>
+            <button onclick="speak('excited')">🎉 Excited</button>
+            <button onclick="speak('sad')">😢 Sad</button>
+            <button onclick="speak('alert')">⚠️ Alert</button>
+            <button onclick="speak('curious')">🤔 Curious</button>
+        </div>
+
+        <button class="full-width" onclick="speak('random')">🎲 Random Beep</button>
+
+        <div class="status" id="status"></div>
+    </div>
+
+    <script>
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const eye = document.getElementById('eye');
+        const bars = document.querySelectorAll('.bar');
+        const status = document.getElementById('status');
+
+        function generateRandom(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        function animateWaveform(duration) {
+            const interval = setInterval(() => {
+                bars.forEach(bar => {
+                    const height = generateRandom(5, 50);
+                    bar.style.height = height + 'px';
+                });
+            }, 50);
+
+            setTimeout(() => {
+                clearInterval(interval);
+                bars.forEach(bar => {
+                    bar.style.height = '5px';
+                });
+            }, duration);
+        }
+
+        function activateEye(duration) {
+            eye.classList.add('active');
+            setTimeout(() => {
+                eye.classList.remove('active');
+            }, duration);
+        }
+
+        function playTone(frequency, startTime, duration, type = 'sine', envelope = {}) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.type = type;
+            oscillator.frequency.setValueAtTime(frequency, startTime);
+            
+            // Apply frequency modulation if specified
+            if (envelope.freqEnd) {
+                oscillator.frequency.exponentialRampToValueAtTime(
+                    envelope.freqEnd, 
+                    startTime + duration
+                );
+            }
+            
+            // Set up gain envelope
+            const attackTime = envelope.attack || 0.01;
+            const releaseTime = envelope.release || 0.01;
+            const sustainLevel = envelope.sustain || 0.3;
+            
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(sustainLevel, startTime + attackTime);
+            gainNode.gain.setValueAtTime(sustainLevel, startTime + duration - releaseTime);
+            gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.start(startTime);
+            oscillator.stop(startTime + duration);
+            
+            return { oscillator, gainNode };
+        }
+
+        function playChirp(startTime, config = {}) {
+            const freq = config.freq || generateRandom(400, 1200);
+            const freqEnd = config.freqEnd || generateRandom(200, 800);
+            const duration = config.duration || generateRandom(0.05, 0.15);
+            const type = config.type || 'sine';
+            
+            playTone(freq, startTime, duration, type, {
+                freqEnd: freqEnd,
+                sustain: 0.2,
+                attack: 0.005,
+                release: 0.02
+            });
+        }
+
+        function playBeep(startTime, config = {}) {
+            const freq = config.freq || generateRandom(800, 1600);
+            const duration = config.duration || 0.08;
+            
+            playTone(freq, startTime, duration, 'square', {
+                sustain: 0.15,
+                attack: 0.005,
+                release: 0.01
+            });
+        }
+
+        function playWhistle(startTime, config = {}) {
+            const freqStart = config.freqStart || generateRandom(800, 1500);
+            const freqEnd = config.freqEnd || generateRandom(400, 700);
+            const duration = config.duration || generateRandom(0.2, 0.4);
+            
+            playTone(freqStart, startTime, duration, 'sine', {
+                freqEnd: freqEnd,
+                sustain: 0.25,
+                attack: 0.01,
+                release: 0.05
+            });
+        }
+
+        function playWarble(startTime, duration = 0.3) {
+            const baseFreq = generateRandom(600, 1000);
+            const modulator = audioContext.createOscillator();
+            const modulatorGain = audioContext.createGain();
+            const carrier = audioContext.createOscillator();
+            const carrierGain = audioContext.createGain();
+            
+            modulator.type = 'sine';
+            modulator.frequency.setValueAtTime(generateRandom(8, 15), startTime);
+            modulatorGain.gain.setValueAtTime(generateRandom(50, 150), startTime);
+            
+            carrier.type = 'sine';
+            carrier.frequency.setValueAtTime(baseFreq, startTime);
+            
+            modulator.connect(modulatorGain);
+            modulatorGain.connect(carrier.frequency);
+            
+            carrierGain.gain.setValueAtTime(0, startTime);
+            carrierGain.gain.linearRampToValueAtTime(0.2, startTime + 0.02);
+            carrierGain.gain.setValueAtTime(0.2, startTime + duration - 0.02);
+            carrierGain.gain.linearRampToValueAtTime(0, startTime + duration);
+            
+            carrier.connect(carrierGain);
+            carrierGain.connect(audioContext.destination);
+            
+            modulator.start(startTime);
+            carrier.start(startTime);
+            modulator.stop(startTime + duration);
+            carrier.stop(startTime + duration);
+        }
+
+        const moods = {
+            happy: {
+                pattern: [
+                    { type: 'chirp', delay: 0, config: { freq: 1200, freqEnd: 1400 } },
+                    { type: 'chirp', delay: 0.1, config: { freq: 1000, freqEnd: 1300 } },
+                    { type: 'beep', delay: 0.25, config: { freq: 1500 } },
+                    { type: 'chirp', delay: 0.35, config: { freq: 1100, freqEnd: 1500 } }
+                ],
+                message: 'Beep-boop! 😊'
+            },
+            worried: {
+                pattern: [
+                    { type: 'whistle', delay: 0, config: { freqStart: 1200, freqEnd: 400 } },
+                    { type: 'beep', delay: 0.35, config: { freq: 600 } },
+                    { type: 'beep', delay: 0.45, config: { freq: 550 } },
+                    { type: 'chirp', delay: 0.6, config: { freq: 500, freqEnd: 400 } }
+                ],
+                message: 'Beep-beep-boop... 😰'
+            },
+            excited: {
+                pattern: [
+                    { type: 'chirp', delay: 0, config: { freq: 1400, freqEnd: 1800 } },
+                    { type: 'beep', delay: 0.08, config: { freq: 1600 } },
+                    { type: 'beep', delay: 0.15, config: { freq: 1700 } },
+                    { type: 'chirp', delay: 0.23, config: { freq: 1500, freqEnd: 1900 } },
+                    { type: 'warble', delay: 0.35, duration: 0.25 },
+                    { type: 'beep', delay: 0.65, config: { freq: 1800 } }
+                ],
+                message: 'Beep-beep-beep!! 🎉'
+            },
+            sad: {
+                pattern: [
+                    { type: 'whistle', delay: 0, config: { freqStart: 900, freqEnd: 300, duration: 0.5 } },
+                    { type: 'beep', delay: 0.6, config: { freq: 400 } },
+                    { type: 'chirp', delay: 0.75, config: { freq: 450, freqEnd: 350 } }
+                ],
+                message: 'Boop... 😢'
+            },
+            alert: {
+                pattern: [
+                    { type: 'beep', delay: 0, config: { freq: 1500 } },
+                    { type: 'beep', delay: 0.12, config: { freq: 1500 } },
+                    { type: 'warble', delay: 0.25, duration: 0.35 },
+                    { type: 'beep', delay: 0.65, config: { freq: 1600 } },
+                    { type: 'beep', delay: 0.77, config: { freq: 1600 } }
+                ],
+                message: 'Alert! Beep-beep! ⚠️'
+            },
+            curious: {
+                pattern: [
+                    { type: 'chirp', delay: 0, config: { freq: 700, freqEnd: 1000 } },
+                    { type: 'beep', delay: 0.2, config: { freq: 900 } },
+                    { type: 'chirp', delay: 0.32, config: { freq: 800, freqEnd: 1100 } }
+                ],
+                message: 'Beep-boop? 🤔'
+            },
+            random: {
+                pattern: null, // Will be generated randomly
+                message: 'Beep-boop-beep!'
+            }
+        };
+
+        function speak(mood = 'random') {
+            const now = audioContext.currentTime;
+            let pattern;
+            
+            if (mood === 'random' || !moods[mood]) {
+                // Generate random pattern
+                const numSounds = Math.floor(generateRandom(3, 7));
+                pattern = [];
+                let delay = 0;
+                
+                for (let i = 0; i < numSounds; i++) {
+                    const soundTypes = ['chirp', 'beep', 'whistle'];
+                    const type = soundTypes[Math.floor(Math.random() * soundTypes.length)];
+                    
+                    pattern.push({
+                        type: type,
+                        delay: delay,
+                        config: {}
+                    });
+                    
+                    delay += generateRandom(0.08, 0.2);
+                }
+                
+                status.textContent = 'Beep-boop!';
+            } else {
+                pattern = moods[mood].pattern;
+                status.textContent = moods[mood].message;
+            }
+            
+            let maxDelay = 0;
+            
+            pattern.forEach(sound => {
+                const startTime = now + sound.delay;
+                maxDelay = Math.max(maxDelay, sound.delay + (sound.duration || 0.3));
+                
+                if (sound.type === 'chirp') {
+                    playChirp(startTime, sound.config);
+                } else if (sound.type === 'beep') {
+                    playBeep(startTime, sound.config);
+                } else if (sound.type === 'whistle') {
+                    playWhistle(startTime, sound.config);
+                } else if (sound.type === 'warble') {
+                    playWarble(startTime, sound.duration);
+                }
+            });
+            
+            const totalDuration = maxDelay * 1000;
+            animateWaveform(totalDuration);
+            activateEye(totalDuration);
+            
+            setTimeout(() => {
+                status.textContent = '';
+            }, totalDuration + 500);
+        }
+
+        // Speak on load
+        setTimeout(() => speak('happy'), 500);
+    </script>
+</body>
+</html>

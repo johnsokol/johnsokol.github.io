@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amen Break</title>
+    <style>
+        body {
+            font-family: monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: #222;
+            color: #0f0;
+        }
+        
+        .container {
+            text-align: center;
+            background: #000;
+            padding: 40px;
+            border: 2px solid #0f0;
+            border-radius: 10px;
+            max-width: 600px;
+        }
+        
+        h1 {
+            margin: 0 0 30px 0;
+            font-size: 32px;
+        }
+        
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px;
+            border-radius: 5px;
+        }
+        
+        button:hover:not(:disabled) {
+            background: #0c0;
+        }
+        
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .pattern {
+            margin: 30px 0;
+            font-size: 14px;
+            line-height: 1.8;
+            text-align: left;
+            background: #111;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        
+        .beat {
+            margin: 5px 0;
+        }
+        
+        .current {
+            background: #0f0;
+            color: #000;
+            padding: 2px 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AMEN BREAK</h1>
+        <div>
+            <button id="playBtn">▶ PLAY</button>
+            <button id="stopBtn" disabled>⏹ STOP</button>
+        </div>
+        
+        <div class="pattern">
+            <div class="beat" id="b0">1.00: KICK + CRASH</div>
+            <div class="beat" id="b1">1.50: hi-hat</div>
+            <div class="beat" id="b2">2.00: SNARE (backbeat)</div>
+            <div class="beat" id="b3">2.50: ghost snare</div>
+            <div class="beat" id="b4">3.00: KICK</div>
+            <div class="beat" id="b5">3.25: kick</div>
+            <div class="beat" id="b6">3.50: SNARE</div>
+            <div class="beat" id="b7">3.75: kick</div>
+            <div class="beat" id="b8">4.00: SNARE</div>
+            <div class="beat" id="b9">4.25: kick</div>
+            <div class="beat" id="b10">4.50: snare</div>
+            <div class="beat" id="b11">4.75: ghost snare</div>
+        </div>
+        
+        <div id="info">BPM: ~170 | Duration: ~1.4s per bar</div>
+    </div>
+
+    <script>
+        let audioContext;
+        let isPlaying = false;
+        let loopTimeout;
+        
+        // Highlight current beat
+        function highlightBeat(index) {
+            document.querySelectorAll('.beat').forEach(el => el.classList.remove('current'));
+            const el = document.getElementById(`b${index}`);
+            if (el) el.classList.add('current');
+        }
+        
+        // Kick drum with heavy bass
+        function playKick(time, amp = 1.0) {
+            // Main kick oscillator
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(200, time);
+            osc.frequency.exponentialRampToValueAtTime(50, time + 0.05);
+            osc.frequency.exponentialRampToValueAtTime(35, time + 0.2);
+            
+            gain.gain.setValueAtTime(amp * 1.2, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+            
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            
+            osc.start(time);
+            osc.stop(time + 0.55);
+            
+            // Sub-bass layer for extra low end
+            const sub = audioContext.createOscillator();
+            const subGain = audioContext.createGain();
+            
+            sub.type = 'sine';
+            sub.frequency.setValueAtTime(60, time);
+            sub.frequency.exponentialRampToValueAtTime(30, time + 0.1);
+            
+            subGain.gain.setValueAtTime(amp * 0.8, time);
+            subGain.gain.exponentialRampToValueAtTime(0.01, time + 0.6);
+            
+            sub.connect(subGain);
+            subGain.connect(audioContext.destination);
+            
+            sub.start(time);
+            sub.stop(time + 0.65);
+        }
+        
+        // Snare drum
+        function playSnare(time, amp = 1.0) {
+            // Noise component
+            const noise = audioContext.createBufferSource();
+            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.2, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < data.length; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            noise.buffer = buffer;
+            
+            const noiseFilter = audioContext.createBiquadFilter();
+            noiseFilter.type = 'highpass';
+            noiseFilter.frequency.setValueAtTime(1000, time);
+            
+            const noiseGain = audioContext.createGain();
+            noiseGain.gain.setValueAtTime(amp * 0.6, time);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.12);
+            
+            noise.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(audioContext.destination);
+            
+            // Tone component (body)
+            const osc = audioContext.createOscillator();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(180, time);
+            osc.frequency.exponentialRampToValueAtTime(100, time + 0.08);
+            
+            const oscGain = audioContext.createGain();
+            oscGain.gain.setValueAtTime(amp * 0.3, time);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+            
+            osc.connect(oscGain);
+            oscGain.connect(audioContext.destination);
+            
+            noise.start(time);
+            noise.stop(time + 0.2);
+            osc.start(time);
+            osc.stop(time + 0.15);
+        }
+        
+        // Hi-hat
+        function playHiHat(time, amp = 1.0) {
+            const noise = audioContext.createBufferSource();
+            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.05, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < data.length; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            noise.buffer = buffer;
+            
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.setValueAtTime(7000, time);
+            
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(amp * 0.4, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.04);
+            
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioContext.destination);
+            
+            noise.start(time);
+            noise.stop(time + 0.05);
+        }
+        
+        // Crash cymbal
+        function playCrash(time, amp = 1.0) {
+            const noise = audioContext.createBufferSource();
+            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.5, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < data.length; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            noise.buffer = buffer;
+            
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.setValueAtTime(4000, time);
+            
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(amp * 0.3, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.4);
+            
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioContext.destination);
+            
+            noise.start(time);
+            noise.stop(time + 0.5);
+        }
+        
+        // The Amen Break pattern
+        function playAmenBreak(startTime) {
+            const beatDuration = 60 / 170; // ~0.353 seconds per beat at 170 BPM
+            const sixteenth = beatDuration / 4;
+            
+            // Beat 1: Kick + Crash
+            playKick(startTime, 1.0);
+            playCrash(startTime, 0.8);
+            highlightBeat(0);
+            
+            // Beat 1.5: Hi-hat
+            setTimeout(() => highlightBeat(1), (sixteenth * 2) * 1000);
+            playHiHat(startTime + sixteenth * 2, 0.6);
+            
+            // Beat 2: Snare (backbeat)
+            setTimeout(() => highlightBeat(2), (beatDuration) * 1000);
+            playSnare(startTime + beatDuration, 1.0);
+            playHiHat(startTime + beatDuration, 0.6);
+            
+            // Beat 2.5: Ghost snare + hi-hat
+            setTimeout(() => highlightBeat(3), (beatDuration + sixteenth * 2) * 1000);
+            playSnare(startTime + beatDuration + sixteenth * 2, 0.3);
+            playHiHat(startTime + beatDuration + sixteenth * 2, 0.5);
+            
+            // Beat 3: Kick (start of famous fill)
+            setTimeout(() => highlightBeat(4), (beatDuration * 2) * 1000);
+            playKick(startTime + beatDuration * 2, 0.95);
+            playHiHat(startTime + beatDuration * 2, 0.6);
+            
+            // Beat 3.25: Quick kick
+            setTimeout(() => highlightBeat(5), (beatDuration * 2 + sixteenth) * 1000);
+            playKick(startTime + beatDuration * 2 + sixteenth, 0.75);
+            
+            // Beat 3.5: Snare
+            setTimeout(() => highlightBeat(6), (beatDuration * 2 + sixteenth * 2) * 1000);
+            playSnare(startTime + beatDuration * 2 + sixteenth * 2, 0.85);
+            playHiHat(startTime + beatDuration * 2 + sixteenth * 2, 0.5);
+            
+            // Beat 3.75: Kick
+            setTimeout(() => highlightBeat(7), (beatDuration * 2 + sixteenth * 3) * 1000);
+            playKick(startTime + beatDuration * 2 + sixteenth * 3, 0.8);
+            
+            // Beat 4: Snare
+            setTimeout(() => highlightBeat(8), (beatDuration * 3) * 1000);
+            playSnare(startTime + beatDuration * 3, 0.9);
+            playHiHat(startTime + beatDuration * 3, 0.6);
+            
+            // Beat 4.25: Kick
+            setTimeout(() => highlightBeat(9), (beatDuration * 3 + sixteenth) * 1000);
+            playKick(startTime + beatDuration * 3 + sixteenth, 0.75);
+            
+            // Beat 4.5: Snare
+            setTimeout(() => highlightBeat(10), (beatDuration * 3 + sixteenth * 2) * 1000);
+            playSnare(startTime + beatDuration * 3 + sixteenth * 2, 0.8);
+            
+            // Beat 4.75: Ghost snare (leads back to 1)
+            setTimeout(() => highlightBeat(11), (beatDuration * 3 + sixteenth * 3) * 1000);
+            playSnare(startTime + beatDuration * 3 + sixteenth * 3, 0.35);
+            playHiHat(startTime + beatDuration * 3 + sixteenth * 3, 0.5);
+        }
+        
+        // Loop the pattern
+        function startLoop() {
+            if (!isPlaying) return;
+            
+            const currentTime = audioContext.currentTime;
+            playAmenBreak(currentTime);
+            
+            // Schedule next iteration (4 beats at 170 BPM = ~1.41 seconds)
+            const loopDuration = (60 / 170) * 4;
+            loopTimeout = setTimeout(startLoop, loopDuration * 1000);
+        }
+        
+        // Start playback
+        function startPlayback() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            isPlaying = true;
+            startLoop();
+            
+            document.getElementById('playBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+        }
+        
+        // Stop playback
+        function stopPlayback() {
+            isPlaying = false;
+            
+            if (loopTimeout) {
+                clearTimeout(loopTimeout);
+            }
+            
+            document.querySelectorAll('.beat').forEach(el => el.classList.remove('current'));
+            
+            document.getElementById('playBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+        
+        // Event listeners
+        document.getElementById('playBtn').addEventListener('click', startPlayback);
+        document.getElementById('stopBtn').addEventListener('click', stopPlayback);
+    </script>
+</body>
+</html>

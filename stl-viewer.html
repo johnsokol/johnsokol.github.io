@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STL Viewer & Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 0;
+            height: calc(100vh - 180px);
+            min-height: 600px;
+        }
+        .sidebar {
+            background: #f8f9fa;
+            padding: 20px;
+            border-right: 1px solid #e0e0e0;
+            overflow-y: auto;
+        }
+        .upload-section {
+            margin-bottom: 25px;
+        }
+        .upload-label {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            font-weight: 600;
+        }
+        .upload-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        #fileInput {
+            display: none;
+        }
+        .info-section {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .info-title {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+        .info-item:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            color: #666;
+            font-weight: 500;
+        }
+        .info-value {
+            color: #333;
+            font-weight: 600;
+            text-align: right;
+        }
+        .viewer-container {
+            position: relative;
+            background: #1a1a1a;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        .control-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+            color: #667eea;
+        }
+        .control-btn:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            text-align: center;
+        }
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: rgba(255,255,255,0.5);
+        }
+        .placeholder-icon {
+            font-size: 64px;
+            margin-bottom: 10px;
+        }
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            .sidebar {
+                border-right: none;
+                border-bottom: 1px solid #e0e0e0;
+            }
+            .viewer-container {
+                height: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔷 STL Viewer & Analyzer</h1>
+            <div class="subtitle">Upload and analyze 3D STL models</div>
+        </div>
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="upload-section">
+                    <label for="fileInput" class="upload-label">
+                        📁 Upload STL File
+                    </label>
+                    <input type="file" id="fileInput" accept=".stl" />
+                </div>
+
+                <div id="fileInfo" class="info-section" style="display: none;">
+                    <div class="info-title">File Information</div>
+                    <div class="info-item">
+                        <span class="info-label">File Name:</span>
+                        <span class="info-value" id="fileName">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">File Size:</span>
+                        <span class="info-value" id="fileSize">-</span>
+                    </div>
+                </div>
+
+                <div id="meshInfo" class="info-section" style="display: none;">
+                    <div class="info-title">Mesh Information</div>
+                    <div class="info-item">
+                        <span class="info-label">Triangles:</span>
+                        <span class="info-value" id="triangleCount">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Vertices:</span>
+                        <span class="info-value" id="vertexCount">-</span>
+                    </div>
+                </div>
+
+                <div id="dimensionInfo" class="info-section" style="display: none;">
+                    <div class="info-title">Dimensions (mm)</div>
+                    <div class="info-item">
+                        <span class="info-label">Width (X):</span>
+                        <span class="info-value" id="dimX">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Height (Y):</span>
+                        <span class="info-value" id="dimY">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Depth (Z):</span>
+                        <span class="info-value" id="dimZ">-</span>
+                    </div>
+                </div>
+
+                <div id="analysisInfo" class="info-section" style="display: none;">
+                    <div class="info-title">Analysis</div>
+                    <div class="info-item">
+                        <span class="info-label">Volume:</span>
+                        <span class="info-value" id="volume">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Surface Area:</span>
+                        <span class="info-value" id="surfaceArea">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Center:</span>
+                        <span class="info-value" id="center">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="viewer-container">
+                <div id="canvas-container"></div>
+                <div id="placeholder" class="placeholder">
+                    <div class="placeholder-icon">📦</div>
+                    <div>Upload an STL file to view</div>
+                </div>
+                <div id="loading" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <div>Loading model...</div>
+                </div>
+                <div class="controls">
+                    <button class="control-btn" onclick="resetCamera()">🔄 Reset View</button>
+                    <button class="control-btn" onclick="toggleWireframe()">🔲 Wireframe</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, controls, mesh;
+        let wireframeMode = false;
+
+        // Initialize Three.js scene
+        function initScene() {
+            const container = document.getElementById('canvas-container');
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x2a2a2a);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(
+                45,
+                container.clientWidth / container.clientHeight,
+                0.1,
+                10000
+            );
+            camera.position.set(100, 100, 100);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const directionalLight1 = new THREE.DirectionalLight(0xffffff, 1.0);
+            directionalLight1.position.set(1, 1, 1);
+            scene.add(directionalLight1);
+
+            const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.6);
+            directionalLight2.position.set(-1, -1, -1);
+            scene.add(directionalLight2);
+
+            const directionalLight3 = new THREE.DirectionalLight(0xffffff, 0.4);
+            directionalLight3.position.set(0, 1, 0);
+            scene.add(directionalLight3);
+
+            // Add hemisphere light for better ambient lighting
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+            scene.add(hemiLight);
+
+            // Grid
+            const gridHelper = new THREE.GridHelper(200, 20, 0x444444, 0x222222);
+            scene.add(gridHelper);
+
+            // Axes helper
+            const axesHelper = new THREE.AxesHelper(50);
+            scene.add(axesHelper);
+
+            // Controls (using basic implementation since OrbitControls might not be available)
+            setupControls();
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+
+            // Animation loop
+            animate();
+        }
+
+        // Basic orbit controls implementation
+        function setupControls() {
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            const canvas = renderer.domElement;
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaX = e.clientX - previousMousePosition.x;
+                    const deltaY = e.clientY - previousMousePosition.y;
+
+                    if (mesh) {
+                        mesh.rotation.y += deltaX * 0.01;
+                        mesh.rotation.x += deltaY * 0.01;
+                    }
+
+                    previousMousePosition = { x: e.clientX, y: e.clientY };
+                }
+            });
+
+            canvas.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                isDragging = false;
+            });
+
+            // Zoom with mouse wheel
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomSpeed = 0.1;
+                camera.position.z += e.deltaY * zoomSpeed;
+                camera.position.z = Math.max(10, Math.min(1000, camera.position.z));
+            });
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        // Load STL file
+        function loadSTL(file) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('placeholder').style.display = 'none';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const arrayBuffer = e.target.result;
+                const geometry = parseSTL(arrayBuffer);
+                
+                if (geometry) {
+                    displayModel(geometry);
+                    analyzeModel(geometry, file);
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Parse STL file (binary format)
+        function parseSTL(arrayBuffer) {
+            const view = new DataView(arrayBuffer);
+            const isASCII = true;
+            
+            // Check if ASCII or binary
+            const reader = new Uint8Array(arrayBuffer);
+            let isAscii = true;
+            for (let i = 0; i < Math.min(5000, reader.length); i++) {
+                if (reader[i] === 0) {
+                    isAscii = false;
+                    break;
+                }
+            }
+
+            if (isAscii) {
+                return parseSTLAscii(arrayBuffer);
+            } else {
+                return parseSTLBinary(arrayBuffer);
+            }
+        }
+
+        // Parse ASCII STL
+        function parseSTLAscii(arrayBuffer) {
+            const text = new TextDecoder().decode(arrayBuffer);
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            const normals = [];
+
+            const patternFace = /facet[\s\S]*?endfacet/g;
+            const patternNormal = /normal\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)/;
+            const patternVertex = /vertex\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)/g;
+
+            const faces = text.match(patternFace);
+            if (!faces) return null;
+
+            faces.forEach(face => {
+                const normalMatch = face.match(patternNormal);
+                const vertexMatches = [...face.matchAll(patternVertex)];
+
+                if (normalMatch && vertexMatches.length === 3) {
+                    const normal = [
+                        parseFloat(normalMatch[1]),
+                        parseFloat(normalMatch[3]),
+                        parseFloat(normalMatch[5])
+                    ];
+
+                    vertexMatches.forEach(vertex => {
+                        vertices.push(
+                            parseFloat(vertex[1]),
+                            parseFloat(vertex[3]),
+                            parseFloat(vertex[5])
+                        );
+                        normals.push(...normal);
+                    });
+                }
+            });
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+
+            return geometry;
+        }
+
+        // Parse binary STL
+        function parseSTLBinary(arrayBuffer) {
+            const view = new DataView(arrayBuffer);
+            const geometry = new THREE.BufferGeometry();
+            
+            const triangles = view.getUint32(80, true);
+            const vertices = [];
+            const normals = [];
+
+            for (let i = 0; i < triangles; i++) {
+                const offset = 84 + i * 50;
+
+                // Normal
+                const nx = view.getFloat32(offset, true);
+                const ny = view.getFloat32(offset + 4, true);
+                const nz = view.getFloat32(offset + 8, true);
+
+                // Vertices
+                for (let j = 0; j < 3; j++) {
+                    const vOffset = offset + 12 + j * 12;
+                    vertices.push(
+                        view.getFloat32(vOffset, true),
+                        view.getFloat32(vOffset + 4, true),
+                        view.getFloat32(vOffset + 8, true)
+                    );
+                    normals.push(nx, ny, nz);
+                }
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+
+            return geometry;
+        }
+
+        // Display model
+        function displayModel(geometry) {
+            // Remove existing mesh
+            if (mesh) {
+                scene.remove(mesh);
+            }
+
+            // Center and scale geometry
+            geometry.computeBoundingBox();
+            const center = new THREE.Vector3();
+            geometry.boundingBox.getCenter(center);
+            geometry.translate(-center.x, -center.y, -center.z);
+
+            // Recompute normals for proper lighting
+            geometry.computeVertexNormals();
+
+            // Create material with better lighting response
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x667eea,
+                roughness: 0.5,
+                metalness: 0.1,
+                side: THREE.DoubleSide,
+                flatShading: false
+            });
+
+            mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+
+            // Fit camera to model
+            const boundingBox = geometry.boundingBox;
+            const size = boundingBox.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+            cameraZ *= 1.5;
+
+            camera.position.set(cameraZ, cameraZ, cameraZ);
+            camera.lookAt(0, 0, 0);
+        }
+
+        // Analyze model
+        function analyzeModel(geometry, file) {
+            const boundingBox = geometry.boundingBox;
+            const size = boundingBox.getSize(new THREE.Vector3());
+            const center = new THREE.Vector3();
+            boundingBox.getCenter(center);
+
+            // Count triangles and vertices
+            const triangleCount = geometry.attributes.position.count / 3;
+            const vertexCount = geometry.attributes.position.count;
+
+            // Calculate volume and surface area
+            const volume = calculateVolume(geometry);
+            const surfaceArea = calculateSurfaceArea(geometry);
+
+            // Update UI
+            document.getElementById('fileInfo').style.display = 'block';
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+
+            document.getElementById('meshInfo').style.display = 'block';
+            document.getElementById('triangleCount').textContent = triangleCount.toLocaleString();
+            document.getElementById('vertexCount').textContent = vertexCount.toLocaleString();
+
+            document.getElementById('dimensionInfo').style.display = 'block';
+            document.getElementById('dimX').textContent = size.x.toFixed(2);
+            document.getElementById('dimY').textContent = size.y.toFixed(2);
+            document.getElementById('dimZ').textContent = size.z.toFixed(2);
+
+            document.getElementById('analysisInfo').style.display = 'block';
+            document.getElementById('volume').textContent = volume.toFixed(2) + ' mm³';
+            document.getElementById('surfaceArea').textContent = surfaceArea.toFixed(2) + ' mm²';
+            document.getElementById('center').textContent = `(${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${center.z.toFixed(1)})`;
+        }
+
+        // Calculate volume using signed volume of triangles
+        function calculateVolume(geometry) {
+            const positions = geometry.attributes.position.array;
+            let volume = 0;
+
+            for (let i = 0; i < positions.length; i += 9) {
+                const v1 = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
+                const v2 = new THREE.Vector3(positions[i + 3], positions[i + 4], positions[i + 5]);
+                const v3 = new THREE.Vector3(positions[i + 6], positions[i + 7], positions[i + 8]);
+
+                volume += signedVolumeOfTriangle(v1, v2, v3);
+            }
+
+            return Math.abs(volume);
+        }
+
+        function signedVolumeOfTriangle(p1, p2, p3) {
+            return p1.dot(p2.cross(p3)) / 6.0;
+        }
+
+        // Calculate surface area
+        function calculateSurfaceArea(geometry) {
+            const positions = geometry.attributes.position.array;
+            let area = 0;
+
+            for (let i = 0; i < positions.length; i += 9) {
+                const v1 = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
+                const v2 = new THREE.Vector3(positions[i + 3], positions[i + 4], positions[i + 5]);
+                const v3 = new THREE.Vector3(positions[i + 6], positions[i + 7], positions[i + 8]);
+
+                const edge1 = new THREE.Vector3().subVectors(v2, v1);
+                const edge2 = new THREE.Vector3().subVectors(v3, v1);
+                const cross = new THREE.Vector3().crossVectors(edge1, edge2);
+                
+                area += cross.length() / 2;
+            }
+
+            return area;
+        }
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        // Reset camera
+        function resetCamera() {
+            if (mesh) {
+                const geometry = mesh.geometry;
+                const boundingBox = geometry.boundingBox;
+                const size = boundingBox.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const fov = camera.fov * (Math.PI / 180);
+                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                cameraZ *= 1.5;
+
+                camera.position.set(cameraZ, cameraZ, cameraZ);
+                camera.lookAt(0, 0, 0);
+                mesh.rotation.set(0, 0, 0);
+            }
+        }
+
+        // Toggle wireframe
+        function toggleWireframe() {
+            if (mesh) {
+                wireframeMode = !wireframeMode;
+                mesh.material.wireframe = wireframeMode;
+            }
+        }
+
+        // File input handler
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loadSTL(file);
+            }
+        });
+
+        // Initialize scene when page loads
+        window.addEventListener('load', initScene);
+    </script>
+</body>
+</html>

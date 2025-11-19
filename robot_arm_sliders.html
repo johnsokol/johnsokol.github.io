@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Arm Control</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100vh;
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 8px;
+            color: white;
+            min-width: 250px;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .control-group input[type="range"] {
+            width: 100%;
+        }
+        .value-display {
+            display: inline-block;
+            float: right;
+            font-weight: bold;
+        }
+        #ws-status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            text-align: center;
+        }
+        .ws-connected {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #0f0;
+        }
+        .ws-disconnected {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid #f00;
+        }
+        #ws-controls {
+            margin-top: 15px;
+        }
+        #ws-controls input {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #666;
+        }
+        button {
+            width: 100%;
+            padding: 8px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="controls">
+        <h3 style="margin-top: 0;">Robot Arm Control</h3>
+        
+        <div class="control-group">
+            <label>Base Rotation <span class="value-display" id="base-value">0°</span></label>
+            <input type="range" id="base" min="-180" max="180" value="0" step="1">
+        </div>
+        
+        <div class="control-group">
+            <label>Shoulder <span class="value-display" id="shoulder-value">0°</span></label>
+            <input type="range" id="shoulder" min="-90" max="90" value="0" step="1">
+        </div>
+        
+        <div class="control-group">
+            <label>Elbow <span class="value-display" id="elbow-value">0°</span></label>
+            <input type="range" id="elbow" min="-135" max="135" value="0" step="1">
+        </div>
+        
+        <div class="control-group">
+            <label>Wrist Pitch <span class="value-display" id="wrist-value">0°</span></label>
+            <input type="range" id="wrist" min="-90" max="90" value="0" step="1">
+        </div>
+        
+        <div class="control-group">
+            <label>Wrist Roll <span class="value-display" id="roll-value">0°</span></label>
+            <input type="range" id="roll" min="-180" max="180" value="0" step="1">
+        </div>
+        
+        <div id="ws-controls">
+            <h4 style="margin-bottom: 10px;">WebSocket</h4>
+            <input type="text" id="ws-url" placeholder="ws://localhost:8080" value="ws://localhost:8080">
+            <button id="ws-connect">Connect</button>
+        </div>
+        
+        <div id="ws-status" class="ws-disconnected">Disconnected</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x222222);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 5, 5);
+        camera.lookAt(0, 2, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 10, 5);
+        scene.add(directionalLight);
+        
+        // Grid helper
+        const gridHelper = new THREE.GridHelper(10, 10);
+        scene.add(gridHelper);
+        
+        // Robot arm components
+        const baseMaterial = new THREE.MeshPhongMaterial({ color: 0x444444 });
+        const armMaterial = new THREE.MeshPhongMaterial({ color: 0x2196F3 });
+        const jointMaterial = new THREE.MeshPhongMaterial({ color: 0xFF9800 });
+        
+        // Base
+        const baseGeometry = new THREE.CylinderGeometry(0.5, 0.6, 0.3, 32);
+        const base = new THREE.Mesh(baseGeometry, baseMaterial);
+        base.position.y = 0.15;
+        scene.add(base);
+        
+        // Base rotator (pivot for base rotation)
+        const baseRotator = new THREE.Group();
+        baseRotator.position.y = 0.3;
+        base.add(baseRotator);
+        
+        // Shoulder joint
+        const shoulderJointGeometry = new THREE.SphereGeometry(0.25, 32, 32);
+        const shoulderJoint = new THREE.Mesh(shoulderJointGeometry, jointMaterial);
+        baseRotator.add(shoulderJoint);
+        
+        // Upper arm
+        const upperArmGeometry = new THREE.CylinderGeometry(0.15, 0.15, 2, 32);
+        const upperArm = new THREE.Mesh(upperArmGeometry, armMaterial);
+        upperArm.position.y = 1;
+        shoulderJoint.add(upperArm);
+        
+        // Elbow joint
+        const elbowJoint = new THREE.Mesh(shoulderJointGeometry, jointMaterial);
+        elbowJoint.position.y = 1;
+        upperArm.add(elbowJoint);
+        
+        // Lower arm
+        const lowerArmGeometry = new THREE.CylinderGeometry(0.12, 0.12, 1.5, 32);
+        const lowerArm = new THREE.Mesh(lowerArmGeometry, armMaterial);
+        lowerArm.position.y = 0.75;
+        elbowJoint.add(lowerArm);
+        
+        // Wrist joint
+        const wristJoint = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), jointMaterial);
+        wristJoint.position.y = 0.75;
+        lowerArm.add(wristJoint);
+        
+        // End effector (hand)
+        const handGeometry = new THREE.BoxGeometry(0.3, 0.15, 0.4);
+        const hand = new THREE.Mesh(handGeometry, armMaterial);
+        hand.position.y = 0.2;
+        wristJoint.add(hand);
+        
+        // WebSocket connection
+        let ws = null;
+        let isConnected = false;
+        
+        // Joint angles (in degrees)
+        const jointAngles = {
+            base: 0,
+            shoulder: 0,
+            elbow: 0,
+            wrist: 0,
+            roll: 0
+        };
+        
+        // Slider controls
+        const sliders = {
+            base: document.getElementById('base'),
+            shoulder: document.getElementById('shoulder'),
+            elbow: document.getElementById('elbow'),
+            wrist: document.getElementById('wrist'),
+            roll: document.getElementById('roll')
+        };
+        
+        const valueDisplays = {
+            base: document.getElementById('base-value'),
+            shoulder: document.getElementById('shoulder-value'),
+            elbow: document.getElementById('elbow-value'),
+            wrist: document.getElementById('wrist-value'),
+            roll: document.getElementById('roll-value')
+        };
+        
+        // Update robot arm based on joint angles
+        function updateRobotArm() {
+            baseRotator.rotation.y = THREE.MathUtils.degToRad(jointAngles.base);
+            shoulderJoint.rotation.z = THREE.MathUtils.degToRad(jointAngles.shoulder);
+            elbowJoint.rotation.z = THREE.MathUtils.degToRad(jointAngles.elbow);
+            wristJoint.rotation.z = THREE.MathUtils.degToRad(jointAngles.wrist);
+            wristJoint.rotation.y = THREE.MathUtils.degToRad(jointAngles.roll);
+        }
+        
+        // Send joint angles over WebSocket
+        function sendJointAngles() {
+            if (isConnected && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(jointAngles));
+            }
+        }
+        
+        // Slider event listeners
+        Object.keys(sliders).forEach(joint => {
+            sliders[joint].addEventListener('input', (e) => {
+                jointAngles[joint] = parseFloat(e.target.value);
+                valueDisplays[joint].textContent = jointAngles[joint] + '°';
+                updateRobotArm();
+                sendJointAngles();
+            });
+        });
+        
+        // WebSocket controls
+        const wsUrlInput = document.getElementById('ws-url');
+        const wsConnectBtn = document.getElementById('ws-connect');
+        const wsStatus = document.getElementById('ws-status');
+        
+        wsConnectBtn.addEventListener('click', () => {
+            if (isConnected) {
+                // Disconnect
+                if (ws) {
+                    ws.close();
+                }
+            } else {
+                // Connect
+                const url = wsUrlInput.value;
+                try {
+                    ws = new WebSocket(url);
+                    
+                    ws.onopen = () => {
+                        isConnected = true;
+                        wsStatus.textContent = 'Connected';
+                        wsStatus.className = 'ws-connected';
+                        wsConnectBtn.textContent = 'Disconnect';
+                        wsUrlInput.disabled = true;
+                        console.log('WebSocket connected');
+                        sendJointAngles(); // Send initial position
+                    };
+                    
+                    ws.onclose = () => {
+                        isConnected = false;
+                        wsStatus.textContent = 'Disconnected';
+                        wsStatus.className = 'ws-disconnected';
+                        wsConnectBtn.textContent = 'Connect';
+                        wsUrlInput.disabled = false;
+                        console.log('WebSocket disconnected');
+                    };
+                    
+                    ws.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                        wsStatus.textContent = 'Connection Error';
+                        wsStatus.className = 'ws-disconnected';
+                    };
+                    
+                    ws.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            // Handle incoming commands from server
+                            if (data.base !== undefined) {
+                                Object.keys(data).forEach(joint => {
+                                    if (sliders[joint]) {
+                                        jointAngles[joint] = data[joint];
+                                        sliders[joint].value = data[joint];
+                                        valueDisplays[joint].textContent = data[joint] + '°';
+                                    }
+                                });
+                                updateRobotArm();
+                            }
+                        } catch (e) {
+                            console.error('Error parsing message:', e);
+                        }
+                    };
+                } catch (e) {
+                    console.error('Error creating WebSocket:', e);
+                    wsStatus.textContent = 'Connection Failed';
+                }
+            }
+        });
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Simple camera rotation with mouse
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            isDragging = true;
+        });
+        
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+                
+                const rotationSpeed = 0.005;
+                camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), deltaX * rotationSpeed);
+                camera.lookAt(0, 2, 0);
+            }
+            
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+        
+        renderer.domElement.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>

@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockgame - Sonic Pi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #1e3c72;
+            margin-bottom: 10px;
+            font-size: 32px;
+            text-align: center;
+        }
+        
+        .artist {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+            min-width: 120px;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .visualizer {
+            background: #000;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 3px;
+            height: 150px;
+            align-items: flex-end;
+            justify-content: space-around;
+        }
+        
+        .bar {
+            flex: 1;
+            background: linear-gradient(to top, #667eea, #764ba2);
+            border-radius: 3px 3px 0 0;
+            transition: height 0.1s;
+            min-width: 3px;
+        }
+        
+        .info {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .label {
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .status {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 18px;
+            color: #667eea;
+            font-weight: bold;
+            min-height: 24px;
+        }
+        
+        .loop-indicators {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .loop-indicator {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .loop-indicator.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 BLOCKGAME</h1>
+        <p class="artist">Coded by DJ_Dave</p>
+        
+        <div class="controls">
+            <button id="playBtn">▶ PLAY</button>
+            <button id="stopBtn" disabled>⏹ STOP</button>
+        </div>
+        
+        <div class="loop-indicators">
+            <div class="loop-indicator" id="loop-kick">KICK</div>
+            <div class="loop-indicator" id="loop-clap">CLAP</div>
+            <div class="loop-indicator" id="loop-hhc">HI-HAT</div>
+            <div class="loop-indicator" id="loop-crash">CRASH</div>
+            <div class="loop-indicator" id="loop-arp">ARP</div>
+            <div class="loop-indicator" id="loop-bass">BASS</div>
+        </div>
+        
+        <div class="visualizer" id="visualizer">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+        
+        <div class="info">
+            <div class="info-row">
+                <span class="label">BPM:</span>
+                <span>130</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Style:</span>
+                <span>Electronic / Drum & Bass</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Loops:</span>
+                <span>8 synchronized layers</span>
+            </div>
+        </div>
+        
+        <div class="status" id="status"></div>
+    </div>
+
+    <script>
+        let audioContext;
+        let isPlaying = false;
+        let loopTimeouts = [];
+        let startTime;
+        let masterGain;
+        let analyser;
+        
+        const BPM = 130;
+        const beatDuration = 60 / BPM;
+        const cmaster1 = 130;
+        const cmaster2 = 130;
+        
+        // Pattern ticks
+        let ticks = {
+            kick: -1,
+            hhc1: -1,
+            arp_echo: -1,
+            arp_pan: -1,
+            arp_notes: -1
+        };
+        
+        // Pattern checker
+        function pattern(patternString, tickName) {
+            ticks[tickName] = (ticks[tickName] + 1) % patternString.length;
+            return patternString[ticks[tickName]] === 'x';
+        }
+        
+        // Create kick drum
+        function playKick(time, amp) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(150, time);
+            osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
+            
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(cmaster1, time);
+            
+            gain.gain.setValueAtTime(amp, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+            
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+            
+            osc.start(time);
+            osc.stop(time + 0.3);
+            
+            flashLoop('kick');
+        }
+        
+        // Create snare/clap
+        function playSnare(time, amp, rate, start = 0, pan = 0) {
+            const noise = audioContext.createBufferSource();
+            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.3, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < data.length; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            
+            noise.buffer = buffer;
+            noise.playbackRate.value = rate;
+            
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.setValueAtTime(cmaster1 * 5, time);
+            
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(amp, time + start);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+            
+            const panner = audioContext.createStereoPanner();
+            panner.pan.setValueAtTime(pan, time);
+            
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(panner);
+            panner.connect(masterGain);
+            
+            noise.start(time + start);
+            noise.stop(time + 0.2);
+            
+            flashLoop('clap');
+        }
+        
+        // Create hi-hat
+        function playHiHat(time, amp, rate, finish, pan) {
+            const noise = audioContext.createBufferSource();
+            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.1, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < data.length; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            
+            noise.buffer = buffer;
+            noise.playbackRate.value = rate;
+            
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.setValueAtTime(cmaster2 * 20, time);
+            
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(amp, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05 * finish);
+            
+            const panner = audioContext.createStereoPanner();
+            panner.pan.setValueAtTime(pan, time);
+            
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(panner);
+            panner.connect(masterGain);
+            
+            noise.start(time);
+            noise.stop(time + 0.1 * finish);
+            
+            flashLoop('hhc');
+        }
+        
+        // Create crash cymbal
+        function playCrash(time, amp, rate, finish) {
+            const noise = audioContext.createBufferSource();
+            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 2, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < data.length; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            
+            noise.buffer = buffer;
+            noise.playbackRate.value = rate;
+            
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.setValueAtTime((cmaster2 - 10) * 10, time);
+            
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(amp, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 2 * finish);
+            
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+            
+            noise.start(time);
+            noise.stop(time + 2 * finish);
+            
+            flashLoop('crash');
+        }
+        
+        // Create beep synth (for arp)
+        function playBeep(time, freq, amp, release, cutoff, pan, attack) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+            const panner = audioContext.createStereoPanner();
+            
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(freq, time);
+            
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(cutoff, time);
+            filter.Q.setValueAtTime(5, time);
+            
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(amp, time + attack);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + release);
+            
+            panner.pan.setValueAtTime(pan, time);
+            
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(panner);
+            panner.connect(masterGain);
+            
+            osc.start(time);
+            osc.stop(time + release);
+            
+            flashLoop('arp');
+        }
+        
+        // Create tech saws synth (for bass)
+        function playTechSaws(time, freq, sustain, cutoff, amp, attack) {
+            const osc1 = audioContext.createOscillator();
+            const osc2 = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+            
+            osc1.type = 'sawtooth';
+            osc1.frequency.setValueAtTime(freq, time);
+            osc1.detune.setValueAtTime(-10, time);
+            
+            osc2.type = 'sawtooth';
+            osc2.frequency.setValueAtTime(freq, time);
+            osc2.detune.setValueAtTime(10, time);
+            
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(cutoff, time);
+            filter.Q.setValueAtTime(10, time);
+            
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(amp * 0.5, time + attack + 0.01);
+            gain.gain.setValueAtTime(amp * 0.5, time + sustain - 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + sustain);
+            
+            osc1.connect(filter);
+            osc2.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+            
+            osc1.start(time);
+            osc2.start(time);
+            osc1.stop(time + sustain);
+            osc2.stop(time + sustain);
+            
+            flashLoop('bass');
+        }
+        
+        // Note frequencies
+        const notes = {
+            'g3': 196.00, 'd3': 146.83, 'e3': 164.81,
+            'g4': 392.00, 'a4': 440.00, 'b4': 493.88,
+            'c5': 523.25, 'd5': 587.33
+        };
+        
+        // G major pentatonic scale
+        const gMajorPentatonic = [
+            notes.g4, notes.a4, notes.b4, notes.d5, 
+            notes.g4 * 2 // e5
+        ];
+        
+        // Shuffle array
+        function shuffle(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+        
+        // Flash loop indicator
+        function flashLoop(name) {
+            const el = document.getElementById(`loop-${name}`);
+            if (el) {
+                el.classList.add('active');
+                setTimeout(() => el.classList.remove('active'), 100);
+            }
+        }
+        
+        // Live loops
+        function scheduleLoop(callback, interval, name) {
+            if (!isPlaying) return;
+            
+            callback();
+            const timeout = setTimeout(() => {
+                scheduleLoop(callback, interval, name);
+            }, interval * 1000);
+            
+            loopTimeouts.push(timeout);
+        }
+        
+        // Kick loop
+        function kickLoop() {
+            const currentTime = audioContext.currentTime;
+            const a = 1.5;
+            
+            if (pattern("x--x--x---x--x--", 'kick')) {
+                playKick(currentTime, a);
+            }
+        }
+        
+        // Clap loop
+        function clapLoop() {
+            const currentTime = audioContext.currentTime;
+            const a = 0.75;
+            
+            setTimeout(() => {
+                playSnare(currentTime + 1, a, 2.5, 0, 0);
+                playSnare(currentTime + 1, a, 2.2, 0.02, 0.2);
+                playSnare(currentTime + 1, a, 2.0, 0.04, -0.2);
+            }, 0);
+        }
+        
+        // Hi-hat loop 1
+        function hhc1Loop() {
+            const currentTime = audioContext.currentTime;
+            const a = 0.75;
+            const p = Math.random() < 0.5 ? -0.3 : 0.3;
+            
+            if (pattern("x-x-x-x-x-x-x-x-xxx-x-x-x-x-x-x-", 'hhc1')) {
+                playHiHat(currentTime, a, 2.5, 0.5, p);
+            }
+        }
+        
+        // Hi-hat loop 2
+        function hhc2Loop() {
+            const currentTime = audioContext.currentTime;
+            const a = 1.25;
+            
+            setTimeout(() => {
+                playHiHat(currentTime + 0.5, a, 1.2, 0.5, 0);
+            }, 0);
+        }
+        
+        // Crash loop
+        function crashLoop() {
+            const currentTime = audioContext.currentTime;
+            const a = 0.1;
+            const c = cmaster2 - 10;
+            const r = 1.5;
+            const f = 0.25;
+            
+            setTimeout(() => {
+                playCrash(currentTime + 14.5, a, r, f);
+                playCrash(currentTime + 14.5, a, r - 0.2, f);
+            }, 0);
+            
+            setTimeout(() => {
+                playCrash(currentTime + 15.5, a, r, f);
+                playCrash(currentTime + 15.5, a, r - 0.2, f);
+            }, 1000);
+        }
+        
+        // Arp loop
+        function arpLoop() {
+            const currentTime = audioContext.currentTime;
+            const a = 0.6;
+            const r = 0.25;
+            const c = 130;
+            const at = 0.01;
+            
+            // Calculate pan (oscillating)
+            ticks.arp_pan = (ticks.arp_pan + 1) % 128;
+            const panProgress = ticks.arp_pan / 64;
+            const p = panProgress <= 1 ? 
+                -0.7 + panProgress * 1.4 : 
+                0.7 - (panProgress - 1) * 1.4;
+            
+            // Get shuffled notes
+            const shuffledNotes = shuffle(gMajorPentatonic);
+            ticks.arp_notes = (ticks.arp_notes + 1) % shuffledNotes.length;
+            const freq = shuffledNotes[ticks.arp_notes];
+            
+            playBeep(currentTime, freq, a, r, c, p, at);
+        }
+        
+        // Bass loop
+        function bassLoop() {
+            const currentTime = audioContext.currentTime;
+            const c = 60;
+            const a = 0.75;
+            const at = 0;
+            
+            playTechSaws(currentTime, notes.g3, 6, c, a, at);
+            
+            setTimeout(() => {
+                playTechSaws(audioContext.currentTime, notes.d3, 2, c, a, at);
+            }, 6000);
+            
+            setTimeout(() => {
+                playTechSaws(audioContext.currentTime, notes.e3, 8, c, a, at);
+            }, 8000);
+        }
+        
+        // Visualizer
+        function updateVisualizer() {
+            if (!isPlaying || !analyser) return;
+            
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(dataArray);
+            
+            const bars = document.querySelectorAll('.bar');
+            const step = Math.floor(dataArray.length / bars.length);
+            
+            bars.forEach((bar, i) => {
+                const value = dataArray[i * step];
+                const percent = (value / 255) * 100;
+                bar.style.height = `${Math.max(5, percent)}%`;
+            });
+            
+            requestAnimationFrame(updateVisualizer);
+        }
+        
+        // Start playback
+        function startPlayback() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            // Reset ticks
+            for (let key in ticks) {
+                ticks[key] = -1;
+            }
+            
+            // Create master gain and analyser
+            masterGain = audioContext.createGain();
+            masterGain.gain.setValueAtTime(0.7, audioContext.currentTime);
+            
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            
+            masterGain.connect(analyser);
+            analyser.connect(audioContext.destination);
+            
+            isPlaying = true;
+            startTime = audioContext.currentTime;
+            
+            // Start all loops
+            scheduleLoop(kickLoop, beatDuration * 0.25, 'kick');
+            scheduleLoop(clapLoop, beatDuration * 2, 'clap');
+            scheduleLoop(hhc1Loop, beatDuration * 0.125, 'hhc1');
+            scheduleLoop(hhc2Loop, beatDuration * 1, 'hhc2');
+            scheduleLoop(crashLoop, beatDuration * 16, 'crash');
+            scheduleLoop(arpLoop, beatDuration * 0.75, 'arp');
+            scheduleLoop(bassLoop, beatDuration * 16, 'bass');
+            
+            // Start visualizer
+            updateVisualizer();
+            
+            // Update UI
+            document.getElementById('status').textContent = '♪ Playing...';
+            document.getElementById('playBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+        }
+        
+        // Stop playback
+        function stopPlayback() {
+            isPlaying = false;
+            
+            // Clear all timeouts
+            loopTimeouts.forEach(timeout => clearTimeout(timeout));
+            loopTimeouts = [];
+            
+            // Fade out
+            if (masterGain) {
+                masterGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            }
+            
+            // Clear loop indicators
+            document.querySelectorAll('.loop-indicator').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Reset visualizer
+            document.querySelectorAll('.bar').forEach(bar => {
+                bar.style.height = '5%';
+            });
+            
+            // Update UI
+            setTimeout(() => {
+                document.getElementById('status').textContent = '';
+                document.getElementById('playBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+            }, 500);
+        }
+        
+        // Event listeners
+        document.getElementById('playBtn').addEventListener('click', startPlayback);
+        document.getElementById('stopBtn').addEventListener('click', stopPlayback);
+    </script>
+</body>
+</html>

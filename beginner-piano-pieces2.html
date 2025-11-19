@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beginner Piano Pieces with Chords</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #00ff00;
+        }
+        h1 {
+            text-align: center;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+        .container {
+            background: #000;
+            border: 2px solid #00ff00;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .piece {
+            margin: 20px 0;
+            padding: 15px;
+            background: #0a0a0a;
+            border: 1px solid #006600;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .piece:hover {
+            border-color: #00ff00;
+            background: #1a1a1a;
+        }
+        .piece.selected {
+            border: 2px solid #00ff00;
+            background: #1a4a1a;
+        }
+        .piece h3 {
+            margin-top: 0;
+            color: #00ff00;
+        }
+        .piece .difficulty {
+            display: inline-block;
+            padding: 3px 8px;
+            background: #006600;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .piece .difficulty.easy {
+            background: #00aa00;
+        }
+        .piece .difficulty.medium {
+            background: #aaaa00;
+        }
+        .piece .notation {
+            font-size: 11px;
+            color: #00cc00;
+            margin: 10px 0;
+            padding: 10px;
+            background: #000;
+            border-radius: 3px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .piece .description {
+            font-size: 13px;
+            color: #888;
+            margin: 10px 0;
+            line-height: 1.5;
+        }
+        button {
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        button:disabled {
+            background: #006600;
+            cursor: not-allowed;
+        }
+        .controls {
+            position: sticky;
+            top: 20px;
+            background: #000;
+            border: 2px solid #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            z-index: 100;
+        }
+        .info {
+            background: #0a0a0a;
+            padding: 15px;
+            border: 1px solid #006600;
+            border-radius: 3px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .category {
+            margin: 30px 0;
+        }
+        .category h2 {
+            color: #00ff00;
+            border-bottom: 2px solid #00ff00;
+            padding-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎹 Beginner Piano Pieces with Chords 🎵</h1>
+    
+    <div class="controls">
+        <strong>Now Playing:</strong> <span id="nowPlaying">None</span>
+        <br>
+        <button id="playBtn" disabled>▶ Play Selected</button>
+        <button id="stopBtn" disabled>⏹ Stop</button>
+    </div>
+
+    <div class="info">
+        <strong>How to use:</strong><br>
+        • Click on any piece to select it<br>
+        • Click "Play Selected" to hear it<br>
+        • Each piece shows the GWBASIC PLAY notation with chords<br>
+        • <span style="color: #00aa00;">●</span> Easy | <span style="color: #aaaa00;">●</span> Medium difficulty
+    </div>
+
+    <div class="category">
+        <h2>Classic Children's Songs</h2>
+
+        <div class="piece" data-notation="T120 O4 L4 [C,E,G] [C,E,G] [D,F,A] [C,E,G] [F,A,O5C] [E,G,B] [C,E,G]2 [C,E,G] [C,E,G] [D,F,A] [C,E,G] [G,B,O5D] [F,A,O5C] [C,E,G]2">
+            <h3>Happy Birthday <span class="difficulty easy">Easy</span></h3>
+            <div class="description">
+                The classic birthday song with simple chord accompaniment. Uses C, F, and G chords.
+                <br><strong>Key:</strong> C Major | <strong>Chords:</strong> C - F - G
+            </div>
+            <div class="notation">T120 O4 L4 [C,E,G] [C,E,G] [D,F,A] [C,E,G] [F,A,O5C] [E,G,B] [C,E,G]2 [C,E,G] [C,E,G] [D,F,A] [C,E,G] [G,B,O5D] [F,A,O5C] [C,E,G]2</div>
+        </div>
+
+        <div class="piece" data-notation="T140 O4 L4 [E,G,O5C] [D,G,B] [C,E,G] [D,G,B] [E,G,O5C] [E,G,O5C] [E,G,O5C]2 [D,G,B] [D,G,B] [D,G,B]2 [E,G,O5C] [G,B,O5D] [G,B,O5D]2 [E,G,O5C] [D,G,B] [C,E,G] [D,G,B] [E,G,O5C] [E,G,O5C] [E,G,O5C] [E,G,O5C] [D,G,B] [D,G,B] [E,G,O5C] [D,G,B] [C,E,G]2">
+            <h3>Mary Had a Little Lamb <span class="difficulty easy">Easy</span></h3>
+            <div class="description">
+                A nursery rhyme with gentle chord progressions. Perfect for practicing chord changes.
+                <br><strong>Key:</strong> C Major | <strong>Chords:</strong> C - G
+            </div>
+            <div class="notation">T140 O4 L4 [E,G,O5C] [D,G,B] [C,E,G] [D,G,B] [E,G,O5C] [E,G,O5C] [E,G,O5C]2 [D,G,B] [D,G,B] [D,G,B]2...</div>
+        </div>
+
+        <div class="piece" data-notation="T160 O4 L8 [C,E,G] [C,E,G] [C,E,G] [C,E,G] [E,G,O5C] [E,G,O5C] [E,G,O5C]2 [D,F,A] [D,F,A] [E,G,O5C] [E,G,O5C] [D,G,B]4 [C,E,G] [C,E,G] [C,E,G] [C,E,G] [E,G,O5C] [E,G,O5C] [E,G,O5C]2 [D,F,A] [D,F,A] [E,G,O5C] [E,G,O5C] [C,E,G]4">
+            <h3>Twinkle Twinkle Little Star <span class="difficulty easy">Easy</span></h3>
+            <div class="description">
+                Mozart's famous melody with block chords. Great for learning hand coordination.
+                <br><strong>Key:</strong> C Major | <strong>Chords:</strong> C - F - G
+            </div>
+            <div class="notation">T160 O4 L8 [C,E,G] [C,E,G] [C,E,G] [C,E,G] [E,G,O5C] [E,G,O5C] [E,G,O5C]2...</div>
+        </div>
+    </div>
+
+    <div class="category">
+        <h2>Classical Favorites</h2>
+
+        <div class="piece" data-notation="T120 O4 L4 [E,G,O5C] [E,G,O5C] [F,A,O5C] [G,B,O5D] [G,B,O5D] [F,A,O5C] [E,G,O5C] [D,F,B] [C,E,G] [C,E,G] [D,F,B] [E,G,O5C] [E,G,O5C]8 [D,F,B]16 [D,F,B]2 [E,G,O5C] [E,G,O5C] [F,A,O5C] [G,B,O5D] [G,B,O5D] [F,A,O5C] [E,G,O5C] [D,F,B] [C,E,G] [C,E,G] [D,F,B] [E,G,O5C] [D,F,B]8 [C,E,G]16 [C,E,G]2">
+            <h3>Ode to Joy (Beethoven) <span class="difficulty easy">Easy</span></h3>
+            <div class="description">
+                Beethoven's timeless melody from Symphony No. 9. Simple and uplifting.
+                <br><strong>Key:</strong> C Major | <strong>Chords:</strong> C - F - G
+            </div>
+            <div class="notation">T120 O4 L4 [E,G,O5C] [E,G,O5C] [F,A,O5C] [G,B,O5D] [G,B,O5D] [F,A,O5C]...</div>
+        </div>
+
+        <div class="piece" data-notation="T140 O3 L4 [C,E,G] [E,G,O4C] [G,O4C,E] [O4C,E,G] O4 [E,G,O5C] [G,O5C,E] [O5C,E,G] [E,G,O5C] [C,E,G] [E,G,O4C] O3 [G,O4C,E] [O4C,E,G] O4 [E,G,O5C] [G,O5C,E] [O5C,E,G]2">
+            <h3>Canon in D (Pachelbel) - Simplified <span class="difficulty medium">Medium</span></h3>
+            <div class="description">
+                The famous chord progression. This version uses arpeggiated chords (broken chords).
+                <br><strong>Key:</strong> C Major | <strong>Chords:</strong> C - G - Am - Em - F - C - F - G
+            </div>
+            <div class="notation">T140 O3 L4 [C,E,G] [E,G,O4C] [G,O4C,E] [O4C,E,G] O4 [E,G,O5C]...</div>
+        </div>
+    </div>
+
+    <div class="category">
+        <h2>Piano Standards</h2>
+
+        <div class="piece" data-notation="T100 O3 L4 [C,E,G,O4C]2 [E,G,O4C,E]2 [G,O4C,E,G]2 [O4C,E,G,O5C]2 [E,G,O5C,E]2 [G,O5C,E,G]2 [O5C,E,G,O6C]2 [G,O5C,E,G]2">
+            <h3>Heart and Soul - Bass Part <span class="difficulty easy">Easy</span></h3>
+            <div class="description">
+                The iconic bass line from the classic piano duet. Four-note chords ascending.
+                <br><strong>Key:</strong> C Major | <strong>Pattern:</strong> Rising arpeggios
+            </div>
+            <div class="notation">T100 O3 L4 [C,E,G,O4C]2 [E,G,O4C,E]2 [G,O4C,E,G]2 [O4C,E,G,O5C]2...</div>
+        </div>
+
+        <div class="piece" data-notation="T140 O4 L8 [C,E,G] [D,G,B] [C,E,G] [D,G,B] [C,E,G] [D,G,B] [C,E,G]4 [C,E,G] [D,G,B] [C,E,G] [D,G,B] [C,E,G] [D,G,B] [C,E,G]4 [C,E,G] [D,F,A] [C,E,G] [D,F,A] [C,E,G] [D,F,A] [C,E,G] [D,F,A] [C,E,G] [D,G,B] [C,E,G] [D,G,B] [C,E,G]4">
+            <h3>Chopsticks <span class="difficulty easy">Easy</span></h3>
+            <div class="description">
+                The quintessential beginner piano duet. Alternating two-chord pattern.
+                <br><strong>Key:</strong> C Major | <strong>Chords:</strong> C - G (alternating)
+            </div>
+            <div class="notation">T140 O4 L8 [C,E,G] [D,G,B] [C,E,G] [D,G,B] [C,E,G] [D,G,B] [C,E,G]4...</div>
+        </div>
+    </div>
+
+    <div class="category">
+        <h2>Holiday Favorites</h2>
+
+        <div class="piece" data-notation="T160 O4 L4 [C,E,G] [C,E,G] [C,E,G]2 [C,E,G] [C,E,G] [C,E,G]2 [C,E,G] [E,G,O5C] [F,A,O5C]8 [E,G,O5C]16 [D,F,B]2 [D,F,A] [D,F,A] [D,F,A]8 [D,F,A]16 [D,F,A] [C,E,G] [C,E,G]8 [D,F,B]16 [E,G,O5C] [D,G,B] [F,A,O5C] [E,G,O5C] [D,G,B] [C,E,G]2">
+            <h3>Jingle Bells <span class="difficulty easy">Easy</span></h3>
+            <div class="description">
+                The cheerful Christmas classic with festive chord progressions.
+                <br><strong>Key:</strong> C Major | <strong>Chords:</strong> C - F - G - Dm
+            </div>
+            <div class="notation">T160 O4 L4 [C,E,G] [C,E,G] [C,E,G]2 [C,E,G] [C,E,G] [C,E,G]2...</div>
+        </div>
+
+        <div class="piece" data-notation="T120 O4 L4 [C,E,G] L8 [E,G,O5C] [E,G,O5C] [F,A,O5C] [E,G,O5C] [D,F,B] L4 [C,E,G] [C,E,G] [C,E,G] L8 [E,G,O5C] [E,G,O5C] [F,A,O5C] [E,G,O5C] [D,G,B] L4 [D,G,B] [D,G,B] L8 [G,B,O5D] [G,B,O5D] [F,A,O5C] [E,G,O5C] [D,G,B] [E,G,O5C] [F,A,O5C]8 [D,F,B]16 [D,G,B]2">
+            <h3>We Wish You a Merry Christmas <span class="difficulty medium">Medium</span></h3>
+            <div class="description">
+                Traditional carol with varied rhythm and chord changes.
+                <br><strong>Key:</strong> C Major | <strong>Chords:</strong> C - F - G - Dm
+            </div>
+            <div class="notation">T120 O4 L4 [C,E,G] L8 [E,G,O5C] [E,G,O5C] [F,A,O5C] [E,G,O5C] [D,F,B]...</div>
+        </div>
+    </div>
+
+    <div class="category">
+        <h2>Blues & Jazz</h2>
+
+        <div class="piece" data-notation="T100 O3 L4 [C,E,G] [C,E,G] [C,E,G] [C,E,G] [F,A,O4C] [F,A,O4C] [C,E,G] [C,E,G] [G,B,O4D] [F,A,O4C] [C,E,G] [G,B,O4D]">
+            <h3>12-Bar Blues in C <span class="difficulty medium">Medium</span></h3>
+            <div class="description">
+                Classic blues chord progression. Foundation for countless blues and rock songs.
+                <br><strong>Key:</strong> C Major | <strong>Chords:</strong> C - F - G (12-bar pattern)
+            </div>
+            <div class="notation">T100 O3 L4 [C,E,G] [C,E,G] [C,E,G] [C,E,G] [F,A,O4C] [F,A,O4C]...</div>
+        </div>
+
+        <div class="piece" data-notation="T140 O4 L8 [C,E,G] [C,E,G] [D,F,A] [D,F,A] [E,G,B] [E,G,B] [C,E,G] [C,E,G] [F,A,O5C] [F,A,O5C] [D,F,A] [D,F,A] [C,E,G] [C,E,G] [D,G,B] [D,G,B] [C,E,G]2 P2">
+            <h3>When the Saints Go Marching In <span class="difficulty easy">Easy</span></h3>
+            <div class="description">
+                Traditional jazz standard with walking bass feel. Great for rhythm practice.
+                <br><strong>Key:</strong> C Major | <strong>Chords:</strong> C - Dm - Em - F - G
+            </div>
+            <div class="notation">T140 O4 L8 [C,E,G] [C,E,G] [D,F,A] [D,F,A] [E,G,B] [E,G,B]...</div>
+        </div>
+    </div>
+
+    <div class="category">
+        <h2>Practice Exercises</h2>
+
+        <div class="piece" data-notation="T120 O4 L4 [C,E,G] [D,F,A] [E,G,B] [F,A,O5C] [G,B,O5D] [A,O5C,E] [B,O5D,F] [O5C,E,G] [B,O5D,F] [A,O5C,E] [G,B,O5D] [F,A,O5C] [E,G,B] [D,F,A] [C,E,G]2">
+            <h3>Chord Scale Exercise <span class="difficulty easy">Easy</span></h3>
+            <div class="description">
+                Ascending and descending chord scale in C major. Perfect for learning all chords in a key.
+                <br><strong>Key:</strong> C Major | <strong>Purpose:</strong> Chord familiarization
+            </div>
+            <div class="notation">T120 O4 L4 [C,E,G] [D,F,A] [E,G,B] [F,A,O5C] [G,B,O5D]...</div>
+        </div>
+
+        <div class="piece" data-notation="T140 O4 L8 [C,E,G] E G O5 C O4 [D,F,A] F A O5 C O4 [E,G,B] G B O5 D O4 [C,E,G] E G O5 C O4 [F,A,O5C] A O5 C E O4 [C,E,G] E G O5 C O4 [G,B,O5D] B O5 D F O4 [C,E,G]2">
+            <h3>Chord Arpeggio Practice <span class="difficulty medium">Medium</span></h3>
+            <div class="description">
+                Block chords followed by broken chord patterns (arpeggios). Essential for developing technique.
+                <br><strong>Key:</strong> C Major | <strong>Purpose:</strong> Arpeggio coordination
+            </div>
+            <div class="notation">T140 O4 L8 [C,E,G] E G O5 C O4 [D,F,A] F A O5 C...</div>
+        </div>
+    </div>
+
+    <script>
+        class SimplePianoPlayer {
+            constructor() {
+                this.audioContext = null;
+                this.tempo = 120;
+                this.octave = 4;
+                this.defaultLength = 4;
+                this.isPlaying = false;
+                this.scheduledNodes = [];
+            }
+
+            noteFrequencies = {
+                'C': 261.63, 'C#': 277.18, 'Db': 277.18, 'D': 293.66,
+                'D#': 311.13, 'Eb': 311.13, 'E': 329.63, 'F': 349.23,
+                'F#': 369.99, 'Gb': 369.99, 'G': 392.00, 'G#': 415.30,
+                'Ab': 415.30, 'A': 440.00, 'A#': 466.16, 'Bb': 466.16, 'B': 493.88
+            };
+
+            getFrequency(note, octave) {
+                const baseFreq = this.noteFrequencies[note];
+                if (!baseFreq) return 0;
+                return baseFreq * Math.pow(2, octave - 4);
+            }
+
+            getDuration(length) {
+                const quarterNoteDuration = 60 / this.tempo;
+                return (4 / length) * quarterNoteDuration;
+            }
+
+            parsePlayString(playString) {
+                const commands = [];
+                playString = playString.toUpperCase().replace(/\s+/g, '');
+                
+                let i = 0;
+                while (i < playString.length) {
+                    const char = playString[i];
+                    
+                    if (char === 'T') {
+                        i++;
+                        let num = '';
+                        while (i < playString.length && /\d/.test(playString[i])) {
+                            num += playString[i++];
+                        }
+                        commands.push({ type: 'TEMPO', value: parseInt(num) || 120 });
+                    }
+                    else if (char === 'O') {
+                        i++;
+                        let num = '';
+                        while (i < playString.length && /\d/.test(playString[i])) {
+                            num += playString[i++];
+                        }
+                        commands.push({ type: 'OCTAVE', value: parseInt(num) || 4 });
+                    }
+                    else if (char === 'L') {
+                        i++;
+                        let num = '';
+                        while (i < playString.length && /\d/.test(playString[i])) {
+                            num += playString[i++];
+                        }
+                        commands.push({ type: 'LENGTH', value: parseInt(num) || 4 });
+                    }
+                    else if (char === 'P') {
+                        i++;
+                        let num = '';
+                        while (i < playString.length && /\d/.test(playString[i])) {
+                            num += playString[i++];
+                        }
+                        commands.push({ type: 'PAUSE', length: num ? parseInt(num) : null });
+                    }
+                    else if (char === '[') {
+                        i++;
+                        let chordStr = '';
+                        while (i < playString.length && playString[i] !== ']') {
+                            chordStr += playString[i++];
+                        }
+                        i++;
+                        
+                        let num = '';
+                        while (i < playString.length && /\d/.test(playString[i])) {
+                            num += playString[i++];
+                        }
+                        
+                        const noteStrings = chordStr.split(',');
+                        const notes = [];
+                        let currentOctave = this.octave;
+                        
+                        for (let noteStr of noteStrings) {
+                            noteStr = noteStr.trim();
+                            
+                            if (noteStr[0] === 'O') {
+                                currentOctave = parseInt(noteStr[1]) || currentOctave;
+                                continue;
+                            }
+                            
+                            let note = noteStr[0];
+                            let idx = 1;
+                            
+                            if (idx < noteStr.length && (noteStr[idx] === '#' || noteStr[idx] === '+')) {
+                                note += '#';
+                                idx++;
+                            } else if (idx < noteStr.length && noteStr[idx] === '-') {
+                                note += 'b';
+                                idx++;
+                            }
+                            
+                            notes.push({ note: note, octave: currentOctave });
+                        }
+                        
+                        commands.push({ type: 'CHORD', notes: notes, length: num ? parseInt(num) : null });
+                    }
+                    else if (/[A-G]/.test(char)) {
+                        let note = char;
+                        i++;
+                        
+                        if (i < playString.length && (playString[i] === '#' || playString[i] === '+')) {
+                            note += '#';
+                            i++;
+                        } else if (i < playString.length && playString[i] === '-') {
+                            note += 'b';
+                            i++;
+                        }
+                        
+                        let num = '';
+                        while (i < playString.length && /\d/.test(playString[i])) {
+                            num += playString[i++];
+                        }
+                        
+                        commands.push({ type: 'NOTE', note: note, length: num ? parseInt(num) : null });
+                    }
+                    else {
+                        i++;
+                    }
+                }
+                
+                return commands;
+            }
+
+            async play(playString) {
+                if (this.isPlaying) {
+                    this.stop();
+                }
+
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                this.isPlaying = true;
+                this.scheduledNodes = [];
+
+                this.tempo = 120;
+                this.octave = 4;
+                this.defaultLength = 4;
+
+                const commands = this.parsePlayString(playString);
+                let currentTime = this.audioContext.currentTime;
+
+                for (const cmd of commands) {
+                    if (!this.isPlaying) break;
+
+                    switch (cmd.type) {
+                        case 'TEMPO':
+                            this.tempo = cmd.value;
+                            break;
+                        case 'OCTAVE':
+                            this.octave = cmd.value;
+                            break;
+                        case 'LENGTH':
+                            this.defaultLength = cmd.value;
+                            break;
+                        case 'PAUSE':
+                            const pauseLength = cmd.length || this.defaultLength;
+                            currentTime += this.getDuration(pauseLength);
+                            break;
+                        case 'CHORD':
+                            const chordLength = cmd.length || this.defaultLength;
+                            const chordDuration = this.getDuration(chordLength);
+                            
+                            for (const noteData of cmd.notes) {
+                                const frequency = this.getFrequency(noteData.note, noteData.octave);
+                                
+                                if (frequency > 0) {
+                                    const oscillator = this.audioContext.createOscillator();
+                                    const gainNode = this.audioContext.createGain();
+                                    
+                                    oscillator.type = 'sine'; // Softer piano-like sound
+                                    oscillator.frequency.value = frequency;
+                                    
+                                    gainNode.gain.setValueAtTime(0, currentTime);
+                                    gainNode.gain.linearRampToValueAtTime(0.15, currentTime + 0.01);
+                                    gainNode.gain.exponentialRampToValueAtTime(0.01, currentTime + chordDuration);
+                                    
+                                    oscillator.connect(gainNode);
+                                    gainNode.connect(this.audioContext.destination);
+                                    
+                                    oscillator.start(currentTime);
+                                    oscillator.stop(currentTime + chordDuration);
+                                    
+                                    this.scheduledNodes.push({ oscillator, gainNode });
+                                }
+                            }
+                            
+                            currentTime += chordDuration;
+                            break;
+                        case 'NOTE':
+                            const noteLength = cmd.length || this.defaultLength;
+                            const duration = this.getDuration(noteLength);
+                            const frequency = this.getFrequency(cmd.note, this.octave);
+                            
+                            if (frequency > 0) {
+                                const oscillator = this.audioContext.createOscillator();
+                                const gainNode = this.audioContext.createGain();
+                                
+                                oscillator.type = 'sine';
+                                oscillator.frequency.value = frequency;
+                                
+                                gainNode.gain.setValueAtTime(0, currentTime);
+                                gainNode.gain.linearRampToValueAtTime(0.2, currentTime + 0.01);
+                                gainNode.gain.exponentialRampToValueAtTime(0.01, currentTime + duration);
+                                
+                                oscillator.connect(gainNode);
+                                gainNode.connect(this.audioContext.destination);
+                                
+                                oscillator.start(currentTime);
+                                oscillator.stop(currentTime + duration);
+                                
+                                this.scheduledNodes.push({ oscillator, gainNode });
+                            }
+                            
+                            currentTime += duration;
+                            break;
+                    }
+                }
+
+                setTimeout(() => {
+                    this.isPlaying = false;
+                    document.getElementById('stopBtn').disabled = true;
+                }, (currentTime - this.audioContext.currentTime) * 1000);
+            }
+
+            stop() {
+                this.isPlaying = false;
+                
+                this.scheduledNodes.forEach(({ oscillator, gainNode }) => {
+                    try {
+                        oscillator.stop();
+                        oscillator.disconnect();
+                        gainNode.disconnect();
+                    } catch (e) {}
+                });
+                
+                this.scheduledNodes = [];
+                
+                if (this.audioContext) {
+                    this.audioContext.close();
+                    this.audioContext = null;
+                }
+
+                document.getElementById('stopBtn').disabled = true;
+            }
+        }
+
+        const player = new SimplePianoPlayer();
+        let selectedPiece = null;
+
+        // Piece selection
+        document.querySelectorAll('.piece').forEach(piece => {
+            piece.addEventListener('click', () => {
+                document.querySelectorAll('.piece').forEach(p => p.classList.remove('selected'));
+                piece.classList.add('selected');
+                selectedPiece = piece;
+                
+                const title = piece.querySelector('h3').textContent;
+                document.getElementById('nowPlaying').textContent = title;
+                document.getElementById('playBtn').disabled = false;
+            });
+        });
+
+        // Play button
+        document.getElementById('playBtn').addEventListener('click', () => {
+            if (selectedPiece) {
+                const notation = selectedPiece.getAttribute('data-notation');
+                player.play(notation);
+                document.getElementById('stopBtn').disabled = false;
+            }
+        });
+
+        // Stop button
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            player.stop();
+        });
+    </script>
+</body>
+</html>

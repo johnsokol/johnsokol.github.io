@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marble Madness - Intermediate Race Player</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .player-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .header h2 {
+            color: #764ba2;
+            font-size: 1.3em;
+            font-weight: normal;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .visualizer {
+            height: 120px;
+            background: linear-gradient(to bottom, #f0f0f0, #e0e0e0);
+            border-radius: 10px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid #ddd;
+        }
+
+        .marble {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: radial-gradient(circle at 30% 30%, #fff, #667eea, #764ba2);
+            border-radius: 50%;
+            bottom: 20px;
+            transition: left 0.1s linear;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .main-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #333;
+            min-width: 80px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .value-display {
+            min-width: 50px;
+            text-align: right;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .info {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="player-container">
+        <div class="header">
+            <h1>🎵 Marble Madness</h1>
+            <h2>Intermediate Race</h2>
+            <p>Composed by David Wise, Hal Canon & Brad Fuller</p>
+            <p style="font-size: 0.8em; margin-top: 5px;">Rare © 1989</p>
+        </div>
+
+        <div class="visualizer">
+            <div class="marble" id="marble"></div>
+        </div>
+
+        <div class="controls">
+            <div class="main-controls">
+                <button id="playBtn">▶ Play</button>
+                <button id="pauseBtn" disabled>⏸ Pause</button>
+                <button id="stopBtn" disabled>⏹ Stop</button>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress"></div>
+            </div>
+
+            <div class="control-group">
+                <div class="control-row">
+                    <label for="tempo">Tempo:</label>
+                    <input type="range" id="tempo" min="100" max="200" value="150" step="5">
+                    <span class="value-display" id="tempoValue">150 BPM</span>
+                </div>
+
+                <div class="control-row">
+                    <label for="volume">Volume:</label>
+                    <input type="range" id="volume" min="0" max="100" value="70" step="1">
+                    <span class="value-display" id="volumeValue">70%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="info">
+            <p>🎮 Classic arcade game music brought to life!</p>
+        </div>
+    </div>
+
+    <script>
+        // Audio Context
+        let audioContext;
+        let currentNoteIndex = 0;
+        let isPlaying = false;
+        let schedulerInterval;
+        let startTime;
+        let pauseTime = 0;
+
+        // UI Elements
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const tempoSlider = document.getElementById('tempo');
+        const volumeSlider = document.getElementById('volume');
+        const tempoValue = document.getElementById('tempoValue');
+        const volumeValue = document.getElementById('volumeValue');
+        const marble = document.getElementById('marble');
+        const progress = document.getElementById('progress');
+
+        // Musical notation transcribed from the sheet music
+        // Format: [note, duration] where duration is in beats (quarter note = 1 beat)
+        // Note frequencies in Hz
+        const notes = {
+            'rest': 0,
+            'C4': 261.63, 'C#4': 277.18, 'D4': 293.66, 'D#4': 311.13, 'E4': 329.63,
+            'F4': 349.23, 'F#4': 369.99, 'G4': 392.00, 'G#4': 415.30, 'A4': 440.00,
+            'A#4': 466.16, 'B4': 493.88,
+            'C5': 523.25, 'C#5': 554.37, 'D5': 587.33, 'D#5': 622.25, 'E5': 659.25,
+            'F5': 698.46, 'F#5': 739.99, 'G5': 783.99, 'G#5': 830.61, 'A5': 880.00,
+            'A#5': 932.33, 'B5': 987.77,
+            'C6': 1046.50, 'C#6': 1108.73, 'D6': 1174.66
+        };
+
+        // Main melody transcribed from the sheet music
+        // This is a simplified version of the complex notation
+        const melody = [
+            // Opening section (measures 1-4)
+            ['A4', 0.5], ['A4', 0.5], ['A4', 0.5], ['A4', 0.5],
+            ['G#4', 1], ['A4', 0.5], ['A4', 0.5], ['A4', 0.5], ['A4', 0.5],
+            ['A4', 0.5], ['G#4', 0.5], ['A4', 0.5], ['G#4', 0.5], ['G4', 0.5], ['A4', 0.5], ['B4', 0.5], ['C5', 0.5],
+            ['A4', 1], ['rest', 0.5], ['A4', 0.5], ['A4', 0.5], ['A4', 0.5],
+            
+            // Measures 5-8
+            ['F#4', 0.25], ['F#4', 0.25], ['F#4', 0.25], ['A4', 0.25], ['F#4', 0.25], ['A4', 0.25], ['F#4', 0.25], ['A4', 0.25],
+            ['F#4', 0.25], ['F#4', 0.25], ['F#4', 0.25], ['A4', 0.25], ['F#4', 0.25], ['A4', 0.25], ['F#4', 0.25], ['A4', 0.25],
+            ['F#4', 0.25], ['F#4', 0.5], ['F#4', 0.25], ['A4', 0.25], ['F#4', 0.25], ['A4', 0.25], ['F#4', 0.25],
+            ['F#4', 0.25], ['A4', 0.25], ['F#4', 0.25], ['F#4', 0.25], ['F#4', 0.25], ['F#4', 0.25], ['A4', 0.25], ['F#4', 0.25],
+            
+            // Measures 10-13 (rhythmic section)
+            ['E5', 0.5], ['rest', 0.25], ['E5', 0.5], ['rest', 0.5], ['E5', 0.5],
+            ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25],
+            ['E5', 0.5], ['rest', 0.5], ['E5', 0.25], ['rest', 0.25], ['E5', 0.25], ['rest', 0.25],
+            ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25],
+            
+            // Additional phrases
+            ['A4', 0.5], ['E5', 0.5], ['rest', 0.5], ['E5', 0.5],
+            ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25],
+            ['E5', 0.5], ['rest', 0.5], ['E5', 0.5], ['rest', 0.5],
+            ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25],
+            
+            // Melodic runs
+            ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25],
+            ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25],
+            ['A4', 0.5], ['A4', 0.5], ['A4', 0.5], ['A4', 0.5],
+            ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['E5', 0.25], ['rest', 1],
+            
+            // Chromatic sections (measures 21-27)
+            ['F5', 0.5], ['F#5', 0.5], ['G5', 0.25], ['G#5', 0.25], ['A5', 0.5],
+            ['D5', 0.25], ['E5', 0.25], ['D5', 0.25], ['E5', 0.25], ['D5', 0.25], ['E5', 0.25], ['D5', 0.25], ['A4', 0.25],
+            ['F#5', 0.5], ['E5', 0.5], ['D5', 0.5], ['C#5', 0.5],
+            ['D5', 0.25], ['E5', 0.25], ['D5', 0.25], ['F#5', 0.25], ['D5', 0.25], ['E5', 0.25], ['D5', 0.25], ['E5', 0.25],
+            
+            ['G5', 0.5], ['F#5', 0.5], ['E5', 0.5], ['D5', 0.5],
+            ['D5', 0.25], ['C#5', 0.25], ['D5', 0.25], ['E5', 0.25], ['D5', 0.25], ['F5', 0.25], ['D5', 0.25], ['A4', 0.25],
+            
+            // Fast rhythmic pattern (measures 28-34)
+            ['A4', 0.167], ['B4', 0.167], ['C5', 0.167], ['A4', 0.167], ['C5', 0.167], ['D5', 0.167],
+            ['B4', 0.167], ['B4', 0.167], ['B4', 0.167], ['B4', 0.167],
+            ['A4', 0.167], ['G#4', 0.167], ['A4', 0.167], ['B4', 0.167], ['C5', 0.167], ['D5', 0.167],
+            ['B4', 0.167], ['B4', 0.167], ['B4', 0.167], ['B4', 0.167],
+            ['A4', 0.167], ['G#4', 0.167], ['A4', 0.167], ['B4', 0.167], ['D5', 0.167], ['C5', 0.167], ['B4', 0.167], ['A4', 0.25],
+            
+            // Final pattern
+            ['A4', 0.5], ['A4', 0.5], ['A4', 0.5], ['A4', 0.5],
+            ['A4', 0.25], ['A4', 0.25], ['A4', 0.25], ['A4', 0.25], ['A4', 0.25], ['A4', 0.25], ['A4', 0.25], ['A4', 0.25],
+        ];
+
+        function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playNote(frequency, duration, startAt = 0) {
+            if (frequency === 0) return; // Rest
+
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.type = 'square'; // 8-bit style sound
+            oscillator.frequency.value = frequency;
+
+            const volume = volumeSlider.value / 100;
+            gainNode.gain.setValueAtTime(volume * 0.3, audioContext.currentTime + startAt);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + startAt + duration);
+
+            oscillator.start(audioContext.currentTime + startAt);
+            oscillator.stop(audioContext.currentTime + startAt + duration);
+        }
+
+        function schedulerTick() {
+            if (!isPlaying) return;
+
+            const tempo = parseFloat(tempoSlider.value);
+            const beatDuration = 60 / tempo; // Duration of one beat in seconds
+
+            if (currentNoteIndex < melody.length) {
+                const [noteName, beats] = melody[currentNoteIndex];
+                const frequency = notes[noteName];
+                const duration = beats * beatDuration;
+
+                playNote(frequency, duration);
+
+                // Update marble position
+                const progress = (currentNoteIndex / melody.length) * 100;
+                marble.style.left = `${progress}%`;
+                document.getElementById('progress').style.width = `${progress}%`;
+
+                // Animate marble bounce
+                if (frequency > 0) {
+                    marble.style.transition = 'bottom 0.1s ease-in-out';
+                    marble.style.bottom = '50px';
+                    setTimeout(() => {
+                        marble.style.bottom = '20px';
+                    }, 50);
+                }
+
+                currentNoteIndex++;
+                setTimeout(schedulerTick, duration * 1000);
+            } else {
+                // Song finished
+                stopPlayback();
+            }
+        }
+
+        function startPlayback() {
+            initAudioContext();
+            
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            isPlaying = true;
+            schedulerTick();
+
+            playBtn.disabled = true;
+            pauseBtn.disabled = false;
+            stopBtn.disabled = false;
+        }
+
+        function pausePlayback() {
+            isPlaying = false;
+            playBtn.disabled = false;
+            pauseBtn.disabled = true;
+        }
+
+        function stopPlayback() {
+            isPlaying = false;
+            currentNoteIndex = 0;
+            marble.style.left = '0%';
+            document.getElementById('progress').style.width = '0%';
+            
+            playBtn.disabled = false;
+            pauseBtn.disabled = true;
+            stopBtn.disabled = true;
+        }
+
+        // Event Listeners
+        playBtn.addEventListener('click', () => {
+            if (currentNoteIndex >= melody.length) {
+                currentNoteIndex = 0;
+            }
+            startPlayback();
+        });
+
+        pauseBtn.addEventListener('click', pausePlayback);
+        stopBtn.addEventListener('click', stopPlayback);
+
+        tempoSlider.addEventListener('input', (e) => {
+            tempoValue.textContent = `${e.target.value} BPM`;
+        });
+
+        volumeSlider.addEventListener('input', (e) => {
+            volumeValue.textContent = `${e.target.value}%`;
+        });
+
+        // Initialize marble position
+        marble.style.left = '0%';
+    </script>
+</body>
+</html>

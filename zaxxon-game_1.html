@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZAXXON - Isometric Space Shooter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            overflow: hidden;
+            background-color: #111827;
+        }
+
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #renderContainer {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #startScreen {
+            position: relative;
+            z-index: 30;
+            text-align: center;
+            color: white;
+        }
+
+        #startScreen.hidden {
+            display: none;
+        }
+
+        h1 {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #22d3ee;
+            margin-bottom: 1rem;
+        }
+
+        .subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .controls {
+            margin-bottom: 2rem;
+        }
+
+        .controls p {
+            margin: 0.5rem 0;
+        }
+
+        button {
+            background-color: #06b6d4;
+            color: white;
+            font-weight: bold;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            font-size: 1.25rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0891b2;
+        }
+
+        #scoreDisplay {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #22d3ee;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: none;
+        }
+
+        #scoreDisplay.visible {
+            display: block;
+        }
+
+        #gameOverScreen {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+        }
+
+        #gameOverScreen.visible {
+            display: flex;
+        }
+
+        .game-over-content {
+            text-align: center;
+        }
+
+        .game-over-title {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #ef4444;
+            margin-bottom: 1rem;
+        }
+
+        .final-score {
+            font-size: 2rem;
+            color: white;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="renderContainer"></div>
+        
+        <div id="startScreen">
+            <h1>ZAXXON</h1>
+            <p class="subtitle">Isometric Space Shooter</p>
+            <div class="controls">
+                <p><strong>Keyboard:</strong> Arrow Keys = Move, Space = Shoot</p>
+                <p><strong>Mouse:</strong> Move to position ship, Click = Shoot</p>
+                <p><strong>RED/ORANGE:</strong> Shootable targets (50 pts)</p>
+                <p><strong>BLUE:</strong> Barrier walls - dodge them!</p>
+                <p>Survive and destroy targets to score!</p>
+            </div>
+            <button onclick="startGame()">START GAME</button>
+        </div>
+
+        <div id="scoreDisplay">SCORE: <span id="score">0</span></div>
+
+        <div id="gameOverScreen">
+            <div class="game-over-content">
+                <h2 class="game-over-title">GAME OVER</h2>
+                <p class="final-score">Final Score: <span id="finalScore">0</span></p>
+                <button onclick="restartGame()">PLAY AGAIN</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const gameState = {
+            scene: null,
+            camera: null,
+            renderer: null,
+            ship: null,
+            obstacles: [],
+            bullets: [],
+            keys: {},
+            mouse: { x: 0, y: 0 },
+            mouseMovement: false,
+            score: 0,
+            gameOver: false,
+            scrollSpeed: 0.1,
+            animationFrame: null,
+            keyChangeInterval: null,
+            // Audio
+            synth: null,
+            noiseSynth: null,
+            melody: null,
+            bass: null,
+            melodyPattern: null,
+            bassPattern: null,
+            musicStarted: false
+        };
+
+        let started = false;
+
+        async function initAudio() {
+            await Tone.start();
+            
+            // Clean up old audio if exists
+            if (gameState.synth) gameState.synth.dispose();
+            if (gameState.noiseSynth) gameState.noiseSynth.dispose();
+            if (gameState.melody) gameState.melody.dispose();
+            if (gameState.bass) gameState.bass.dispose();
+            if (gameState.melodyPattern) gameState.melodyPattern.dispose();
+            if (gameState.bassPattern) gameState.bassPattern.dispose();
+            if (gameState.keyChangeInterval) clearInterval(gameState.keyChangeInterval);
+            
+            // Shooting sound
+            gameState.synth = new Tone.Synth({
+                oscillator: { type: 'square' },
+                envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
+            }).toDestination();
+
+            // Explosion sound
+            gameState.noiseSynth = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: { attack: 0.001, decay: 0.2, sustain: 0 }
+            }).toDestination();
+
+            // Background music
+            gameState.melody = new Tone.Synth({
+                oscillator: { type: 'triangle' },
+                envelope: { attack: 0.05, decay: 0.1, sustain: 0.3, release: 0.5 }
+            }).toDestination();
+
+            gameState.bass = new Tone.Synth({
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.05, decay: 0.2, sustain: 0.4, release: 0.8 }
+            }).toDestination();
+
+            gameState.melody.volume.value = -12;
+            gameState.bass.volume.value = -8;
+
+            // Random key selection
+            const keys = ['C', 'D', 'E', 'F', 'G', 'A'];
+            const randomKey = keys[Math.floor(Math.random() * keys.length)];
+            
+            // Create melody pattern in random key
+            const melodyNotes = [
+                `${randomKey}4`, 
+                `${randomKey === 'C' || randomKey === 'F' ? 'E' : randomKey === 'D' || randomKey === 'G' ? 'F#' : randomKey === 'E' || randomKey === 'A' ? 'G#' : 'E'}4`,
+                `${randomKey === 'C' ? 'G' : randomKey === 'D' ? 'A' : randomKey === 'E' ? 'B' : randomKey === 'F' ? 'A' : randomKey === 'G' ? 'B' : 'C#'}4`,
+                `${randomKey === 'C' || randomKey === 'F' ? 'E' : randomKey === 'D' || randomKey === 'G' ? 'F#' : randomKey === 'E' || randomKey === 'A' ? 'G#' : 'E'}4`,
+                `${randomKey === 'C' ? 'A' : randomKey === 'D' ? 'B' : randomKey === 'E' ? 'C#' : randomKey === 'F' ? 'C' : randomKey === 'G' ? 'D' : 'E'}4`,
+                `${randomKey === 'C' ? 'G' : randomKey === 'D' ? 'A' : randomKey === 'E' ? 'B' : randomKey === 'F' ? 'A' : randomKey === 'G' ? 'B' : 'C#'}4`,
+                `${randomKey === 'C' || randomKey === 'F' ? 'E' : randomKey === 'D' || randomKey === 'G' ? 'F#' : randomKey === 'E' || randomKey === 'A' ? 'G#' : 'E'}4`,
+                `${randomKey}4`
+            ];
+
+            const bassNotes = [
+                `${randomKey}2`, `${randomKey}2`,
+                `${randomKey === 'C' ? 'A' : randomKey === 'D' ? 'B' : randomKey === 'E' ? 'C#' : randomKey === 'F' ? 'C' : randomKey === 'G' ? 'D' : 'E'}1`,
+                `${randomKey === 'C' ? 'A' : randomKey === 'D' ? 'B' : randomKey === 'E' ? 'C#' : randomKey === 'F' ? 'C' : randomKey === 'G' ? 'D' : 'E'}1`
+            ];
+
+            gameState.melodyPattern = new Tone.Pattern((time, note) => {
+                gameState.melody.triggerAttackRelease(note, '8n', time);
+            }, melodyNotes, 'up');
+
+            gameState.bassPattern = new Tone.Pattern((time, note) => {
+                gameState.bass.triggerAttackRelease(note, '4n', time);
+            }, bassNotes, 'up');
+
+            gameState.melodyPattern.interval = '8n';
+            gameState.bassPattern.interval = '2n';
+
+            Tone.Transport.bpm.value = 140;
+            Tone.Transport.cancel();
+            gameState.melodyPattern.start(0);
+            gameState.bassPattern.start(0);
+            Tone.Transport.start();
+
+            gameState.musicStarted = true;
+            
+            // Change key every 30 seconds
+            gameState.keyChangeInterval = setInterval(() => {
+                if (!gameState.gameOver) {
+                    initAudio();
+                }
+            }, 30000);
+        }
+
+        function initScene() {
+            const container = document.getElementById('renderContainer');
+            
+            // Reset game state
+            gameState.score = 0;
+            gameState.gameOver = false;
+            gameState.scrollSpeed = 0.1;
+            gameState.keys = {};
+            gameState.mouse = { x: 0, y: 0 };
+            gameState.mouseMovement = false;
+            updateScore();
+
+            // Clean up old scene
+            if (gameState.scene) {
+                while(gameState.scene.children.length > 0) { 
+                    const object = gameState.scene.children[0];
+                    if (object.geometry) object.geometry.dispose();
+                    if (object.material) {
+                        if (Array.isArray(object.material)) {
+                            object.material.forEach(material => material.dispose());
+                        } else {
+                            object.material.dispose();
+                        }
+                    }
+                    gameState.scene.remove(object);
+                }
+            }
+            
+            gameState.obstacles = [];
+            gameState.bullets = [];
+
+            // Scene setup
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000033);
+            scene.fog = new THREE.Fog(0x000033, 10, 50);
+
+            // Camera (rotated 30 degrees clockwise)
+            const camera = new THREE.PerspectiveCamera(
+                60,
+                container.clientWidth / container.clientHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(7.5, 15, 13);
+            camera.lookAt(0, 0, -10);
+
+            // Renderer
+            let renderer = gameState.renderer;
+            if (!renderer) {
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                container.appendChild(renderer.domElement);
+            }
+            
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.domElement.style.display = 'block';
+            renderer.domElement.style.width = '100%';
+            renderer.domElement.style.height = '100%';
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            scene.add(directionalLight);
+
+            // Create player ship
+            const shipGeometry = new THREE.ConeGeometry(0.5, 2, 4);
+            const shipMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+            const ship = new THREE.Mesh(shipGeometry, shipMaterial);
+            ship.rotation.x = Math.PI / 2;
+            ship.position.set(0, 2, 0);
+            scene.add(ship);
+
+            // Ground grid
+            const gridHelper = new THREE.GridHelper(100, 50, 0x00ffff, 0x004444);
+            gridHelper.position.y = -0.5;
+            scene.add(gridHelper);
+
+            // Stars
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1 });
+            const starsVertices = [];
+            for (let i = 0; i < 500; i++) {
+                const x = (Math.random() - 0.5) * 100;
+                const y = Math.random() * 50;
+                const z = (Math.random() - 0.5) * 100;
+                starsVertices.push(x, y, z);
+            }
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+            const stars = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(stars);
+
+            gameState.scene = scene;
+            gameState.camera = camera;
+            gameState.renderer = renderer;
+            gameState.ship = ship;
+
+            // Create initial obstacles
+            for (let i = 0; i < 10; i++) {
+                createObstacle(-10 - i * 5);
+            }
+        }
+
+        function createObstacle(z) {
+            // 30% chance for barrier wall, 70% for shootable targets
+            if (Math.random() < 0.3) {
+                createBarrierWall(z);
+            } else {
+                createShootableTarget(z);
+            }
+        }
+
+        function createShootableTarget(z) {
+            const types = ['cube', 'pyramid', 'sphere'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            let geometry, material, mesh;
+            const x = (Math.random() - 0.5) * 12;
+            const y = Math.random() * 6 + 0.5;
+
+            // Shootable targets are RED/ORANGE (hot colors)
+            if (type === 'cube') {
+                geometry = new THREE.BoxGeometry(1, 1, 1);
+                material = new THREE.MeshPhongMaterial({ color: 0xff3333, emissive: 0x330000 });
+                mesh = new THREE.Mesh(geometry, material);
+            } else if (type === 'sphere') {
+                geometry = new THREE.SphereGeometry(0.7, 8, 8);
+                material = new THREE.MeshPhongMaterial({ color: 0xff6600, emissive: 0x331100 });
+                mesh = new THREE.Mesh(geometry, material);
+            } else {
+                geometry = new THREE.ConeGeometry(0.8, 2, 4);
+                material = new THREE.MeshPhongMaterial({ color: 0xff0066, emissive: 0x330011 });
+                mesh = new THREE.Mesh(geometry, material);
+            }
+
+            mesh.position.set(x, y, z);
+            mesh.userData.shootable = true;
+            gameState.scene.add(mesh);
+            gameState.obstacles.push(mesh);
+        }
+
+        function createBarrierWall(z) {
+            // Create a wall that spans the width with a gap
+            const gapPosition = Math.random() < 0.5 ? 'left' : 'right';
+            const gapHeight = Math.random() < 0.5 ? 'low' : 'high';
+            
+            // Barrier walls are BLUE/CYAN (cool colors) - indestructible
+            const material = new THREE.MeshPhongMaterial({ 
+                color: 0x0088ff, 
+                emissive: 0x001133,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            if (gapPosition === 'left') {
+                // Gap on left, wall on right
+                const geometry = new THREE.BoxGeometry(8, 4, 0.5);
+                const mesh = new THREE.Mesh(geometry, material);
+                const heightY = gapHeight === 'low' ? 2 : 5;
+                mesh.position.set(4, heightY, z);
+                mesh.userData.shootable = false;
+                mesh.userData.isWall = true;
+                gameState.scene.add(mesh);
+                gameState.obstacles.push(mesh);
+            } else {
+                // Gap on right, wall on left
+                const geometry = new THREE.BoxGeometry(8, 4, 0.5);
+                const mesh = new THREE.Mesh(geometry, material);
+                const heightY = gapHeight === 'low' ? 2 : 5;
+                mesh.position.set(-4, heightY, z);
+                mesh.userData.shootable = false;
+                mesh.userData.isWall = true;
+                gameState.scene.add(mesh);
+                gameState.obstacles.push(mesh);
+            }
+        }
+
+        function shootBullet() {
+            if (gameState.synth && gameState.musicStarted) {
+                gameState.synth.triggerAttackRelease('C5', '16n');
+            }
+
+            const bulletGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+            const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+            bullet.position.copy(gameState.ship.position);
+            bullet.position.z -= 1;
+            gameState.scene.add(bullet);
+            gameState.bullets.push(bullet);
+        }
+
+        function checkCollision(obj1, obj2) {
+            const box1 = new THREE.Box3().setFromObject(obj1);
+            const box2 = new THREE.Box3().setFromObject(obj2);
+            return box1.intersectsBox(box2);
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('finalScore').textContent = gameState.score;
+        }
+
+        function animate() {
+            if (gameState.gameOver) return;
+
+            gameState.animationFrame = requestAnimationFrame(animate);
+
+            const ship = gameState.ship;
+            const scene = gameState.scene;
+            const camera = gameState.camera;
+            const renderer = gameState.renderer;
+            
+            if (!ship || !scene || !camera || !renderer) return;
+
+            // Mouse movement
+            if (gameState.mouseMovement) {
+                const targetX = gameState.mouse.x * 8;
+                const targetY = gameState.mouse.y * 4 + 4;
+                
+                ship.position.x += (targetX - ship.position.x) * 0.1;
+                ship.position.y += (targetY - ship.position.y) * 0.1;
+                
+                ship.position.x = Math.max(-8, Math.min(8, ship.position.x));
+                ship.position.y = Math.max(0.5, Math.min(8, ship.position.y));
+            }
+
+            // Keyboard movement
+            if (gameState.keys['ArrowLeft']) {
+                ship.position.x -= 0.2;
+                gameState.mouseMovement = false;
+            }
+            if (gameState.keys['ArrowRight']) {
+                ship.position.x += 0.2;
+                gameState.mouseMovement = false;
+            }
+            if (gameState.keys['ArrowUp']) {
+                ship.position.y += 0.2;
+                gameState.mouseMovement = false;
+            }
+            if (gameState.keys['ArrowDown']) {
+                ship.position.y -= 0.2;
+                gameState.mouseMovement = false;
+            }
+            
+            ship.position.x = Math.max(-8, Math.min(8, ship.position.x));
+            ship.position.y = Math.max(0.5, Math.min(8, ship.position.y));
+
+            // Ship bobbing
+            ship.rotation.z = Math.sin(Date.now() * 0.003) * 0.1;
+
+            // Move obstacles
+            gameState.obstacles.forEach((obstacle, index) => {
+                obstacle.position.z += gameState.scrollSpeed;
+                obstacle.rotation.y += 0.01;
+
+                // Check collision with ship
+                if (checkCollision(ship, obstacle)) {
+                    gameState.gameOver = true;
+                    showGameOver();
+                    if (gameState.noiseSynth && gameState.musicStarted) {
+                        gameState.noiseSynth.triggerAttackRelease('16n');
+                    }
+                    Tone.Transport.stop();
+                }
+
+                // Remove and recreate obstacles
+                if (obstacle.position.z > 5) {
+                    scene.remove(obstacle);
+                    gameState.obstacles.splice(index, 1);
+                    createObstacle(-50);
+                    gameState.score += 10;
+                    updateScore();
+                }
+            });
+
+            // Move bullets
+            gameState.bullets.forEach((bullet, bulletIndex) => {
+                bullet.position.z -= 0.5;
+
+                // Check bullet collision with obstacles
+                gameState.obstacles.forEach((obstacle, obstacleIndex) => {
+                    if (checkCollision(bullet, obstacle)) {
+                        // Only destroy if it's a shootable target
+                        if (obstacle.userData.shootable) {
+                            scene.remove(bullet);
+                            scene.remove(obstacle);
+                            gameState.bullets.splice(bulletIndex, 1);
+                            gameState.obstacles.splice(obstacleIndex, 1);
+                            gameState.score += 50;
+                            updateScore();
+                            
+                            if (gameState.noiseSynth && gameState.musicStarted) {
+                                gameState.noiseSynth.triggerAttackRelease('32n');
+                            }
+                            
+                            createObstacle(-50);
+                        } else {
+                            // Bullet just disappears when hitting indestructible wall
+                            scene.remove(bullet);
+                            gameState.bullets.splice(bulletIndex, 1);
+                        }
+                    }
+                });
+
+                // Remove bullets that are too far
+                if (bullet.position.z < -60) {
+                    scene.remove(bullet);
+                    gameState.bullets.splice(bulletIndex, 1);
+                }
+            });
+
+            // Increase difficulty
+            gameState.scrollSpeed = Math.min(0.1 + gameState.score * 0.0001, 0.3);
+
+            renderer.render(scene, camera);
+        }
+
+        function showGameOver() {
+            document.getElementById('gameOverScreen').classList.add('visible');
+        }
+
+        function hideGameOver() {
+            document.getElementById('gameOverScreen').classList.remove('visible');
+        }
+
+        function startGame() {
+            if (started) return;
+            
+            started = true;
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('scoreDisplay').classList.add('visible');
+            document.getElementById('renderContainer').style.visibility = 'visible';
+            
+            initAudio();
+            initScene();
+            animate();
+        }
+
+        function restartGame() {
+            hideGameOver();
+            gameState.gameOver = false;
+            if (gameState.animationFrame) {
+                cancelAnimationFrame(gameState.animationFrame);
+            }
+            if (gameState.keyChangeInterval) {
+                clearInterval(gameState.keyChangeInterval);
+            }
+            Tone.Transport.stop();
+            
+            initAudio();
+            initScene();
+            animate();
+        }
+
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            gameState.keys[e.key] = true;
+            if (e.key === ' ' && !gameState.gameOver && started) {
+                e.preventDefault();
+                shootBullet();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            gameState.keys[e.key] = false;
+        });
+
+        const container = document.getElementById('renderContainer');
+        container.addEventListener('mousemove', (e) => {
+            if (!started) return;
+            const rect = container.getBoundingClientRect();
+            gameState.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            gameState.mouse.y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+            gameState.mouseMovement = true;
+        });
+
+        container.addEventListener('click', () => {
+            if (!gameState.gameOver && started) {
+                shootBullet();
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            if (!gameState.camera || !gameState.renderer) return;
+            const container = document.getElementById('renderContainer');
+            gameState.camera.aspect = container.clientWidth / container.clientHeight;
+            gameState.camera.updateProjectionMatrix();
+            gameState.renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        // Hide render container initially
+        document.getElementById('renderContainer').style.visibility = 'hidden';
+    </script>
+</body>
+</html>

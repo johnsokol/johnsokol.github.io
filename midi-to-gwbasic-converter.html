@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIDI to GWBASIC PLAY Converter</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #00ff00;
+        }
+        h1 {
+            text-align: center;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+        .container {
+            background: #000;
+            border: 2px solid #00ff00;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .upload-area {
+            border: 2px dashed #00ff00;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            margin: 20px 0;
+            background: #0a0a0a;
+            transition: background 0.3s;
+        }
+        .upload-area:hover {
+            background: #1a1a1a;
+        }
+        .upload-area.dragover {
+            background: #2a2a2a;
+            border-color: #00ff00;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            background: #0a0a0a;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            border-radius: 3px;
+            margin: 10px 0;
+            min-height: 200px;
+            resize: vertical;
+        }
+        button {
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        button:disabled {
+            background: #006600;
+            cursor: not-allowed;
+        }
+        .options {
+            margin: 20px 0;
+            padding: 15px;
+            background: #0a0a0a;
+            border: 1px solid #006600;
+            border-radius: 3px;
+        }
+        .options label {
+            display: block;
+            margin: 10px 0;
+        }
+        .options select, .options input[type="number"] {
+            background: #000;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 5px;
+            margin-left: 10px;
+            font-family: 'Courier New', monospace;
+        }
+        .info {
+            margin-top: 10px;
+            padding: 15px;
+            background: #0a0a0a;
+            border: 1px solid #006600;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        .status {
+            color: #ffff00;
+            margin: 10px 0;
+        }
+        .error {
+            color: #ff0000;
+        }
+        .success {
+            color: #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎹 MIDI to GWBASIC PLAY Converter 🎵</h1>
+    
+    <div class="container">
+        <h3>Upload MIDI File:</h3>
+        <div class="upload-area" id="uploadArea">
+            <p style="font-size: 18px;">📁 Click or drag MIDI file here</p>
+            <p style="font-size: 12px; color: #888;">Supports .mid and .midi files</p>
+        </div>
+        <input type="file" id="fileInput" accept=".mid,.midi">
+        
+        <div class="options">
+            <h3>Conversion Options:</h3>
+            <label>
+                Track to convert:
+                <select id="trackSelect">
+                    <option value="merge">Merge all tracks</option>
+                </select>
+            </label>
+            <label>
+                Chord threshold (ms):
+                <input type="number" id="chordThreshold" value="10" min="1" max="100">
+                <span style="font-size: 12px; color: #888;">(notes within this time are grouped as chords)</span>
+            </label>
+            <label>
+                Max notes per chord:
+                <input type="number" id="maxChordNotes" value="4" min="1" max="8">
+            </label>
+            <label>
+                Time range (seconds):
+                Start: <input type="number" id="startTime" value="0" min="0" step="0.1" style="width: 60px;">
+                End: <input type="number" id="endTime" value="30" min="0" step="0.1" style="width: 60px;">
+                <span style="font-size: 12px; color: #888;">(0 for full track)</span>
+            </label>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div>
+            <h3>GWBASIC PLAY Output:</h3>
+            <textarea id="output" placeholder="Converted PLAY notation will appear here..." readonly></textarea>
+            <button id="copyBtn" disabled>📋 Copy to Clipboard</button>
+            <button id="testBtn" disabled>▶ Test Play</button>
+        </div>
+        
+        <div class="info">
+            <h3>How it works:</h3>
+            • Upload a MIDI file (.mid or .midi)<br>
+            • Converter analyzes note events and timing<br>
+            • Notes starting at the same time are grouped into chords using <strong>[note,note]</strong> syntax<br>
+            • Outputs standard GWBASIC PLAY notation with chord extensions<br>
+            • Copy the output and paste into the GWBASIC Chord Player<br>
+            <br>
+            <strong>Tips:</strong><br>
+            • Use shorter time ranges for complex MIDI files<br>
+            • Adjust chord threshold if chords are being split or merged incorrectly<br>
+            • Some MIDI files may produce very long strings - consider extracting just the melody track
+        </div>
+    </div>
+
+    <script>
+        class MIDIToGWBasicConverter {
+            constructor() {
+                this.midiData = null;
+                this.tracks = [];
+            }
+
+            // MIDI note number to note name conversion
+            noteNumberToName(noteNumber) {
+                const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                const octave = Math.floor(noteNumber / 12) - 1;
+                const noteName = noteNames[noteNumber % 12];
+                return { note: noteName, octave: octave };
+            }
+
+            // Parse MIDI file
+            parseMIDI(arrayBuffer) {
+                const dataView = new DataView(arrayBuffer);
+                let offset = 0;
+
+                // Read header chunk
+                const headerChunk = this.readString(dataView, offset, 4);
+                if (headerChunk !== 'MThd') {
+                    throw new Error('Invalid MIDI file');
+                }
+                offset += 4;
+
+                const headerLength = dataView.getUint32(offset);
+                offset += 4;
+
+                const format = dataView.getUint16(offset);
+                offset += 2;
+
+                const numTracks = dataView.getUint16(offset);
+                offset += 2;
+
+                const division = dataView.getUint16(offset);
+                offset += 2;
+
+                this.ticksPerQuarterNote = division;
+
+                // Read tracks
+                this.tracks = [];
+                for (let i = 0; i < numTracks; i++) {
+                    const track = this.readTrack(dataView, offset);
+                    this.tracks.push(track);
+                    offset = track.nextOffset;
+                }
+
+                return { format, numTracks, division, tracks: this.tracks };
+            }
+
+            readString(dataView, offset, length) {
+                let str = '';
+                for (let i = 0; i < length; i++) {
+                    str += String.fromCharCode(dataView.getUint8(offset + i));
+                }
+                return str;
+            }
+
+            readVariableLength(dataView, offset) {
+                let value = 0;
+                let byte;
+                let bytesRead = 0;
+
+                do {
+                    byte = dataView.getUint8(offset + bytesRead);
+                    value = (value << 7) | (byte & 0x7F);
+                    bytesRead++;
+                } while (byte & 0x80);
+
+                return { value, bytesRead };
+            }
+
+            readTrack(dataView, offset) {
+                const trackChunk = this.readString(dataView, offset, 4);
+                if (trackChunk !== 'MTrk') {
+                    throw new Error('Invalid track chunk');
+                }
+                offset += 4;
+
+                const trackLength = dataView.getUint32(offset);
+                offset += 4;
+
+                const trackEnd = offset + trackLength;
+                const events = [];
+                let currentTime = 0;
+                let lastStatus = 0;
+
+                while (offset < trackEnd) {
+                    const deltaTime = this.readVariableLength(dataView, offset);
+                    offset += deltaTime.bytesRead;
+                    currentTime += deltaTime.value;
+
+                    let status = dataView.getUint8(offset);
+                    
+                    // Running status
+                    if (status < 0x80) {
+                        status = lastStatus;
+                    } else {
+                        offset++;
+                        lastStatus = status;
+                    }
+
+                    const eventType = status & 0xF0;
+                    const channel = status & 0x0F;
+
+                    if (eventType === 0x90 || eventType === 0x80) { // Note on/off
+                        const note = dataView.getUint8(offset);
+                        const velocity = dataView.getUint8(offset + 1);
+                        offset += 2;
+
+                        // Note on with velocity 0 is note off
+                        const isNoteOn = eventType === 0x90 && velocity > 0;
+
+                        events.push({
+                            time: currentTime,
+                            type: isNoteOn ? 'noteOn' : 'noteOff',
+                            note: note,
+                            velocity: velocity,
+                            channel: channel
+                        });
+                    } else if (eventType === 0xB0) { // Control change
+                        offset += 2;
+                    } else if (eventType === 0xC0) { // Program change
+                        offset += 1;
+                    } else if (eventType === 0xD0) { // Channel pressure
+                        offset += 1;
+                    } else if (eventType === 0xE0) { // Pitch bend
+                        offset += 2;
+                    } else if (status === 0xFF) { // Meta event
+                        const metaType = dataView.getUint8(offset);
+                        offset++;
+                        const length = this.readVariableLength(dataView, offset);
+                        offset += length.bytesRead;
+
+                        if (metaType === 0x51) { // Set tempo
+                            const tempo = (dataView.getUint8(offset) << 16) |
+                                        (dataView.getUint8(offset + 1) << 8) |
+                                        dataView.getUint8(offset + 2);
+                            events.push({
+                                time: currentTime,
+                                type: 'tempo',
+                                tempo: tempo
+                            });
+                        }
+
+                        offset += length.value;
+                    } else if (status === 0xF0 || status === 0xF7) { // SysEx
+                        const length = this.readVariableLength(dataView, offset);
+                        offset += length.bytesRead + length.value;
+                    } else {
+                        // Unknown event, try to skip
+                        offset++;
+                    }
+                }
+
+                return { events, nextOffset: offset };
+            }
+
+            // Convert track to GWBASIC PLAY notation
+            convertTrackToGWBasic(trackIndex, options = {}) {
+                const {
+                    chordThreshold = 10, // ms
+                    maxChordNotes = 4,
+                    startTime = 0,
+                    endTime = 0
+                } = options;
+
+                let track;
+                if (trackIndex === 'merge') {
+                    // Merge all tracks
+                    track = { events: [] };
+                    this.tracks.forEach(t => {
+                        track.events.push(...t.events);
+                    });
+                    track.events.sort((a, b) => a.time - b.time);
+                } else {
+                    track = this.tracks[trackIndex];
+                }
+
+                if (!track) return '';
+
+                // Convert ticks to seconds
+                let tempo = 500000; // Default tempo (120 BPM)
+                const ticksToSeconds = (ticks) => {
+                    return (ticks / this.ticksPerQuarterNote) * (tempo / 1000000);
+                };
+
+                // Build note events with durations
+                const noteEvents = [];
+                const activeNotes = new Map();
+
+                for (const event of track.events) {
+                    const timeInSeconds = ticksToSeconds(event.time);
+
+                    if (event.type === 'tempo') {
+                        tempo = event.tempo;
+                    } else if (event.type === 'noteOn') {
+                        activeNotes.set(event.note, {
+                            startTime: timeInSeconds,
+                            note: event.note
+                        });
+                    } else if (event.type === 'noteOff') {
+                        if (activeNotes.has(event.note)) {
+                            const noteOn = activeNotes.get(event.note);
+                            const duration = timeInSeconds - noteOn.startTime;
+                            
+                            // Filter by time range
+                            if ((endTime === 0 || noteOn.startTime < endTime) && noteOn.startTime >= startTime) {
+                                noteEvents.push({
+                                    startTime: noteOn.startTime,
+                                    duration: duration,
+                                    note: event.note
+                                });
+                            }
+                            
+                            activeNotes.delete(event.note);
+                        }
+                    }
+                }
+
+                // Group notes into chords
+                const groups = [];
+                let currentGroup = [];
+                let currentTime = -1;
+
+                noteEvents.sort((a, b) => a.startTime - b.startTime);
+
+                for (const noteEvent of noteEvents) {
+                    if (currentTime < 0 || Math.abs(noteEvent.startTime - currentTime) * 1000 <= chordThreshold) {
+                        currentGroup.push(noteEvent);
+                        if (currentTime < 0) currentTime = noteEvent.startTime;
+                    } else {
+                        if (currentGroup.length > 0) {
+                            groups.push(currentGroup);
+                        }
+                        currentGroup = [noteEvent];
+                        currentTime = noteEvent.startTime;
+                    }
+                }
+                if (currentGroup.length > 0) {
+                    groups.push(currentGroup);
+                }
+
+                // Convert to GWBASIC notation
+                const bpm = Math.round(60000000 / tempo);
+                let output = `T${bpm} `;
+                
+                let lastOctave = 4;
+                let lastDuration = 4;
+
+                for (const group of groups) {
+                    // Limit chord size
+                    const notes = group.slice(0, maxChordNotes);
+                    
+                    // Calculate average duration
+                    const avgDuration = notes.reduce((sum, n) => sum + n.duration, 0) / notes.length;
+                    
+                    // Convert duration to note length (1, 2, 4, 8, 16)
+                    const beatDuration = avgDuration * (bpm / 60);
+                    let noteLength;
+                    if (beatDuration >= 3.5) noteLength = 1;
+                    else if (beatDuration >= 1.75) noteLength = 2;
+                    else if (beatDuration >= 0.875) noteLength = 4;
+                    else if (beatDuration >= 0.4375) noteLength = 8;
+                    else noteLength = 16;
+
+                    if (notes.length === 1) {
+                        // Single note
+                        const { note, octave } = this.noteNumberToName(notes[0].note);
+                        
+                        if (octave !== lastOctave) {
+                            output += `O${octave} `;
+                            lastOctave = octave;
+                        }
+                        
+                        output += note;
+                        if (noteLength !== lastDuration) {
+                            output += noteLength;
+                            lastDuration = noteLength;
+                        }
+                        output += ' ';
+                    } else {
+                        // Chord
+                        output += '[';
+                        let chordOctave = lastOctave;
+                        
+                        notes.forEach((noteEvent, idx) => {
+                            const { note, octave } = this.noteNumberToName(noteEvent.note);
+                            
+                            if (octave !== chordOctave) {
+                                output += `O${octave}`;
+                                chordOctave = octave;
+                            }
+                            
+                            output += note;
+                            
+                            if (idx < notes.length - 1) {
+                                output += ',';
+                            }
+                        });
+                        
+                        output += ']';
+                        if (noteLength !== lastDuration) {
+                            output += noteLength;
+                            lastDuration = noteLength;
+                        }
+                        output += ' ';
+                        
+                        lastOctave = chordOctave;
+                    }
+                }
+
+                return output.trim();
+            }
+        }
+
+        // UI Logic
+        const converter = new MIDIToGWBasicConverter();
+        let currentMIDI = null;
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const trackSelect = document.getElementById('trackSelect');
+        const output = document.getElementById('output');
+        const status = document.getElementById('status');
+        const copyBtn = document.getElementById('copyBtn');
+        const testBtn = document.getElementById('testBtn');
+
+        // Upload area click
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.name.match(/\.(mid|midi)$/i)) {
+                showStatus('Please select a MIDI file (.mid or .midi)', 'error');
+                return;
+            }
+
+            showStatus('Loading MIDI file...', 'status');
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    currentMIDI = converter.parseMIDI(e.target.result);
+                    showStatus(`Loaded: ${file.name} (${currentMIDI.numTracks} tracks)`, 'success');
+                    
+                    // Populate track selector
+                    trackSelect.innerHTML = '<option value="merge">Merge all tracks</option>';
+                    for (let i = 0; i < currentMIDI.tracks.length; i++) {
+                        const noteCount = currentMIDI.tracks[i].events.filter(e => e.type === 'noteOn').length;
+                        trackSelect.innerHTML += `<option value="${i}">Track ${i + 1} (${noteCount} notes)</option>`;
+                    }
+                    
+                    // Auto-convert
+                    convertCurrent();
+                } catch (error) {
+                    showStatus(`Error: ${error.message}`, 'error');
+                    console.error(error);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function convertCurrent() {
+            if (!currentMIDI) return;
+
+            const trackIndex = trackSelect.value === 'merge' ? 'merge' : parseInt(trackSelect.value);
+            const chordThreshold = parseInt(document.getElementById('chordThreshold').value);
+            const maxChordNotes = parseInt(document.getElementById('maxChordNotes').value);
+            const startTime = parseFloat(document.getElementById('startTime').value);
+            let endTime = parseFloat(document.getElementById('endTime').value);
+            
+            if (endTime === 0) endTime = Infinity;
+
+            try {
+                const result = converter.convertTrackToGWBasic(trackIndex, {
+                    chordThreshold,
+                    maxChordNotes,
+                    startTime,
+                    endTime: endTime === Infinity ? 0 : endTime
+                });
+                
+                output.value = result;
+                copyBtn.disabled = false;
+                testBtn.disabled = false;
+                
+                showStatus(`Converted successfully! (${result.length} characters)`, 'success');
+            } catch (error) {
+                showStatus(`Conversion error: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = 'status ' + type;
+        }
+
+        // Track selection change
+        trackSelect.addEventListener('change', convertCurrent);
+        document.getElementById('chordThreshold').addEventListener('change', convertCurrent);
+        document.getElementById('maxChordNotes').addEventListener('change', convertCurrent);
+        document.getElementById('startTime').addEventListener('change', convertCurrent);
+        document.getElementById('endTime').addEventListener('change', convertCurrent);
+
+        // Copy button
+        copyBtn.addEventListener('click', () => {
+            output.select();
+            document.execCommand('copy');
+            showStatus('Copied to clipboard!', 'success');
+        });
+
+        // Test play button - opens player in new window
+        testBtn.addEventListener('click', () => {
+            const playString = output.value;
+            const playerWindow = window.open('gwbasic-chord-player.html', '_blank');
+            
+            // Set the play string after window loads
+            if (playerWindow) {
+                playerWindow.addEventListener('load', () => {
+                    setTimeout(() => {
+                        playerWindow.document.getElementById('playString').value = playString;
+                    }, 100);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

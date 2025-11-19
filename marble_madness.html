@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marble Madness - Beginner Race</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a2e;
+            color: #00ff00;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .player {
+            background: #16213e;
+            border: 3px solid #00ff00;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+        }
+        
+        .title {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+        
+        .subtitle {
+            text-align: center;
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 25px;
+        }
+        
+        .display {
+            background: #0a0a0a;
+            border: 2px solid #00ff00;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        .display-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .display-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .label {
+            color: #00ff00;
+        }
+        
+        .value {
+            color: #00ffff;
+            font-weight: bold;
+        }
+        
+        .progress {
+            background: #0a0a0a;
+            border: 2px solid #00ff00;
+            height: 20px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, #00ff00, #00ffff);
+            height: 100%;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background: #0a0a0a;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        
+        button:hover:not(:disabled) {
+            background: #00ff00;
+            color: #0a0a0a;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+        }
+        
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .slider-group {
+            margin-bottom: 15px;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #0a0a0a;
+            border: 1px solid #00ff00;
+            outline: none;
+            border-radius: 3px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #00ff00;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #00ff00;
+            cursor: pointer;
+            border-radius: 2px;
+            border: none;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            background: #0a0a0a;
+            border: 2px solid #00ff00;
+            border-radius: 4px;
+            color: #00ffff;
+        }
+        
+        .blink {
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="player">
+        <div class="title">MARBLE MADNESS</div>
+        <div class="subtitle">Beginner Race • Atari Games © 1984</div>
+        
+        <div class="display">
+            <div class="display-row">
+                <span class="label">TIME:</span>
+                <span class="value" id="timeDisplay">0:00 / 0:45</span>
+            </div>
+            <div class="display-row">
+                <span class="label">TEMPO:</span>
+                <span class="value" id="tempoDisplay">156 BPM</span>
+            </div>
+            <div class="display-row">
+                <span class="label">STATUS:</span>
+                <span class="value" id="statusDisplay">READY</span>
+            </div>
+        </div>
+        
+        <div class="progress">
+            <div class="progress-fill" id="progressBar"></div>
+        </div>
+        
+        <div class="controls">
+            <button id="playBtn" onclick="play()">► PLAY</button>
+            <button id="stopBtn" onclick="stop()" disabled>■ STOP</button>
+        </div>
+        
+        <div class="slider-group">
+            <div class="slider-label">
+                <span class="label">TEMPO</span>
+                <span class="value" id="tempoValue">156</span>
+            </div>
+            <input type="range" id="tempoSlider" min="120" max="200" value="156">
+        </div>
+        
+        <div class="slider-group">
+            <div class="slider-label">
+                <span class="label">VOLUME</span>
+                <span class="value" id="volumeValue">60%</span>
+            </div>
+            <input type="range" id="volumeSlider" min="0" max="100" value="60">
+        </div>
+        
+        <div class="status" id="status">
+            INSERT COIN TO START
+        </div>
+    </div>
+
+    <script>
+        let audioContext = null;
+        let isPlaying = false;
+        let nodes = [];
+        let startTime = 0;
+        let tempo = 156;
+        let volume = 0.6;
+        let progressInterval = null;
+        
+        const freq = {
+            'C3': 130.81, 'D3': 146.83, 'Eb3': 155.56, 'E3': 164.81, 'F3': 174.61, 'G3': 196.00, 'Ab3': 207.65, 'A3': 220.00, 'Bb3': 233.08, 'B3': 246.94,
+            'C4': 261.63, 'D4': 293.66, 'Eb4': 311.13, 'E4': 329.63, 'F4': 349.23, 'G4': 392.00, 'Ab4': 415.30, 'A4': 440.00, 'Bb4': 466.16, 'B4': 493.88,
+            'C5': 523.25, 'D5': 587.33, 'Eb5': 622.25, 'E5': 659.25, 'F5': 698.46, 'G5': 783.99, 'Ab5': 830.61, 'A5': 880.00, 'Bb5': 932.33, 'B5': 987.77,
+            'C6': 1046.50, 'D6': 1174.66
+        };
+        
+        function beat(b) { return (b * 60) / tempo; }
+        
+        function note(f, t, d, g = 0.15) {
+            if (!audioContext || !f) return;
+            try {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                
+                osc.frequency.value = f;
+                osc.type = 'square';
+                
+                const attack = 0.01;
+                gain.gain.setValueAtTime(0, t);
+                gain.gain.linearRampToValueAtTime(g * volume, t + attack);
+                gain.gain.linearRampToValueAtTime(0, t + d);
+                
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                
+                osc.start(t);
+                osc.stop(t + d + 0.1);
+                
+                nodes.push({ osc, gain });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        
+        function play() {
+            if (isPlaying) return;
+            
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            isPlaying = true;
+            startTime = audioContext.currentTime;
+            tempo = parseInt(document.getElementById('tempoSlider').value);
+            volume = parseInt(document.getElementById('volumeSlider').value) / 100;
+            
+            document.getElementById('playBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('tempoSlider').disabled = true;
+            document.getElementById('volumeSlider').disabled = true;
+            document.getElementById('statusDisplay').textContent = 'PLAYING';
+            document.getElementById('status').innerHTML = '<span class="blink">♪ ♫ ♪</span>';
+            
+            progressInterval = setInterval(updateProgress, 100);
+            schedule();
+        }
+        
+        function schedule() {
+            const s = startTime;
+            let t = 0;
+            
+            // Main melody pattern (measures 1-5)
+            const melody1 = [
+                [freq.G4, 0.5], [freq.G4, 0.5], [freq.G4, 0.5], [freq.Ab4, 0.25], [freq.G4, 0.75],
+                [freq.G4, 0.5], [freq.G4, 0.5], [freq.G4, 0.5], [freq.Ab4, 0.25], [freq.G4, 0.75],
+                [freq.G4, 0.5], [freq.G4, 0.5], [freq.G4, 0.5], [freq.Ab4, 0.25], [freq.G4, 0.75],
+                [freq.G4, 0.5], [freq.Ab4, 0.5], [freq.G4, 0.5], [freq.Ab4, 0.25], [freq.G4, 0.75],
+                [freq.Ab4, 0.5], [freq.G4, 0.5], [freq.G4, 0.5], [freq.Ab4, 0.25], [freq.G4, 0.75]
+            ];
+            
+            // Bass pattern
+            const bass1 = [
+                [freq.C3, 1], [freq.Eb3, 1],
+                [freq.C3, 1], [freq.Eb3, 1],
+                [freq.C3, 1], [freq.Eb3, 1],
+                [freq.C3, 1], [freq.Eb3, 1],
+                [freq.C3, 2]
+            ];
+            
+            // Play 4 times (full loop)
+            for (let rep = 0; rep < 4; rep++) {
+                let mt = t;
+                melody1.forEach(([f, d]) => {
+                    note(f, s + beat(mt), beat(d * 0.9), 0.18);
+                    mt += d;
+                });
+                
+                let bt = t;
+                bass1.forEach(([f, d]) => {
+                    note(f, s + beat(bt), beat(d * 0.8), 0.25);
+                    bt += d;
+                });
+                
+                t += 10; // Each section is 10 beats (5 measures of 2/4)
+            }
+            
+            // Section B (measures 17-24) - Key change
+            const melody2 = [
+                [freq.Bb4, 0.5], [freq.Bb4, 0.5], [freq.Bb4, 0.5], [freq.Bb4, 0.5],
+                [freq.Bb4, 0.5], [freq.C5, 0.25], [freq.Bb4, 0.75], [freq.A4, 0.5], [freq.G4, 0.5],
+                [freq.Bb4, 0.5], [freq.Bb4, 0.5], [freq.Bb4, 0.5], [freq.Bb4, 0.5],
+                [freq.C5, 0.5], [freq.Bb4, 0.5], [freq.A4, 0.5], [freq.G4, 0.5]
+            ];
+            
+            const bass2 = [
+                [freq.D3, 1], [freq.F3, 1],
+                [freq.D3, 1], [freq.F3, 1],
+                [freq.D3, 1], [freq.F3, 1],
+                [freq.D3, 1], [freq.F3, 1]
+            ];
+            
+            let mt = t;
+            melody2.forEach(([f, d]) => {
+                note(f, s + beat(mt), beat(d * 0.9), 0.18);
+                mt += d;
+            });
+            
+            let bt = t;
+            bass2.forEach(([f, d]) => {
+                note(f, s + beat(bt), beat(d * 0.8), 0.25);
+                bt += d;
+            });
+            
+            t += 8;
+            
+            // Final section (measures 24-37)
+            const melody3 = [
+                [freq.Eb5, 0.5], [freq.D5, 0.5], [freq.C5, 0.5], [freq.D5, 0.5],
+                [freq.Eb5, 1], [freq.D5, 1],
+                [freq.Bb4, 0.5], [freq.D5, 0.5], [freq.C5, 0.5], [freq.D5, 0.5],
+                [freq.Eb5, 1], [freq.D5, 1]
+            ];
+            
+            const bass3 = [
+                [freq.Eb3, 2], [freq.D3, 2],
+                [freq.Eb3, 2], [freq.D3, 2]
+            ];
+            
+            mt = t;
+            melody3.forEach(([f, d]) => {
+                note(f, s + beat(mt), beat(d * 0.9), 0.18);
+                mt += d;
+            });
+            
+            bt = t;
+            bass3.forEach(([f, d]) => {
+                note(f, s + beat(bt), beat(d * 0.8), 0.25);
+                bt += d;
+            });
+            
+            setTimeout(() => {
+                if (isPlaying) {
+                    stop();
+                    document.getElementById('playBtn').disabled = false;
+                    document.getElementById('tempoSlider').disabled = false;
+                    document.getElementById('volumeSlider').disabled = false;
+                    document.getElementById('status').textContent = 'RACE COMPLETE!';
+                }
+            }, beat(t + 10) * 1000);
+        }
+        
+        function updateProgress() {
+            if (!isPlaying || !audioContext) return;
+            
+            const elapsed = audioContext.currentTime - startTime;
+            const total = 45;
+            const pct = Math.min((elapsed / total) * 100, 100);
+            
+            document.getElementById('progressBar').style.width = pct + '%';
+            
+            const min = Math.floor(elapsed / 60);
+            const sec = Math.floor(elapsed % 60);
+            document.getElementById('timeDisplay').textContent = 
+                `${min}:${sec.toString().padStart(2, '0')} / 0:45`;
+        }
+        
+        function stop() {
+            isPlaying = false;
+            
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+            
+            nodes.forEach(({ osc, gain }) => {
+                try {
+                    osc.stop();
+                    osc.disconnect();
+                    gain.disconnect();
+                } catch (e) {}
+            });
+            nodes = [];
+            
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            document.getElementById('playBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('tempoSlider').disabled = false;
+            document.getElementById('volumeSlider').disabled = false;
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('timeDisplay').textContent = '0:00 / 0:45';
+            document.getElementById('statusDisplay').textContent = 'READY';
+            document.getElementById('status').textContent = 'INSERT COIN TO START';
+        }
+        
+        document.getElementById('tempoSlider').addEventListener('input', (e) => {
+            document.getElementById('tempoValue').textContent = e.target.value;
+            document.getElementById('tempoDisplay').textContent = e.target.value + ' BPM';
+        });
+        
+        document.getElementById('volumeSlider').addEventListener('input', (e) => {
+            document.getElementById('volumeValue').textContent = e.target.value + '%';
+        });
+    </script>
+</body>
+</html>

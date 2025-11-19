@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Construction Level</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            background: #2c3e50;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+            color: #f39c12;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .level-container {
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            border: 4px solid #95a5a6;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Main horizontal level */
+        .horizontal-level {
+            position: relative;
+            width: 100%;
+            height: 80px;
+            background: linear-gradient(to bottom, #2c3e50 0%, #34495e 50%, #2c3e50 100%);
+            border: 3px solid #7f8c8d;
+            border-radius: 40px;
+            margin: 20px 0;
+            overflow: hidden;
+            box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .level-tube {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            border: 2px solid #95a5a6;
+        }
+
+        .level-marks {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .mark {
+            width: 2px;
+            height: 40px;
+            background: #ecf0f1;
+            opacity: 0.5;
+        }
+
+        .mark.center {
+            height: 60px;
+            width: 3px;
+            background: #e74c3c;
+            opacity: 1;
+        }
+
+        .bubble {
+            position: absolute;
+            height: 50px;
+            width: 50px;
+            background: radial-gradient(circle at 30% 30%, #f1c40f, #f39c12);
+            border-radius: 50%;
+            border: 2px solid #d68910;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset -2px -2px 4px rgba(0, 0, 0, 0.2);
+            transition: left 0.1s ease-out, top 0.1s ease-out;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .bubble-ball {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background: radial-gradient(circle at 30% 30%, #fff, #f1c40f);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Angle displays */
+        .angle-display {
+            display: flex;
+            justify-content: space-between;
+            margin: 30px 0;
+        }
+
+        .angle-box {
+            background: #34495e;
+            border: 3px solid #95a5a6;
+            border-radius: 15px;
+            padding: 20px;
+            width: 48%;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .angle-label {
+            font-size: 14px;
+            color: #bdc3c7;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .angle-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #f39c12;
+            font-family: 'Courier New', monospace;
+        }
+
+        .angle-unit {
+            font-size: 18px;
+            color: #95a5a6;
+        }
+
+        /* Arched levels */
+        .arched-levels {
+            display: flex;
+            justify-content: space-between;
+            margin: 30px 0;
+        }
+
+        .arch-level {
+            width: 48%;
+            text-align: center;
+        }
+
+        .arch-label {
+            font-size: 14px;
+            color: #bdc3c7;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .arch-container {
+            position: relative;
+            width: 100%;
+            height: 120px;
+            background: #34495e;
+            border: 3px solid #95a5a6;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .arch-tube {
+            position: absolute;
+            width: 60px;
+            height: 140px;
+            left: 50%;
+            bottom: -20px;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #95a5a6;
+            border-radius: 30px 30px 0 0;
+        }
+
+        .arch-marks {
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 50px;
+            background: #e74c3c;
+        }
+
+        .arch-bubble {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle at 30% 30%, #f1c40f, #f39c12);
+            border-radius: 50%;
+            border: 2px solid #d68910;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            transition: bottom 0.1s ease-out;
+            bottom: 50px;
+        }
+
+        .arch-bubble-inner {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle at 30% 30%, #fff, #f1c40f);
+            border-radius: 50%;
+            top: 10px;
+            left: 10px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Status indicator */
+        .level-status {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            background: #34495e;
+            border-radius: 10px;
+            border: 2px solid #95a5a6;
+        }
+
+        .status-text {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .status-text.level {
+            color: #2ecc71;
+        }
+
+        .status-text.tilted {
+            color: #e74c3c;
+        }
+
+        .status-text.slight {
+            color: #f39c12;
+        }
+
+        #startButton {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            margin: 20px 0;
+        }
+
+        #startButton:active {
+            transform: scale(0.95);
+        }
+
+        .error-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(44, 62, 80, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        .error-content {
+            background: #34495e;
+            padding: 40px;
+            border-radius: 20px;
+            border: 3px solid #e74c3c;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .error-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .error-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-bottom: 15px;
+        }
+
+        .error-message {
+            font-size: 16px;
+            color: #bdc3c7;
+            line-height: 1.6;
+        }
+
+        .calibration-hint {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(52, 152, 219, 0.2);
+            border-radius: 10px;
+            border: 2px solid #3498db;
+            font-size: 14px;
+            color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📐 Construction Level</h1>
+
+        <button id="startButton">Activate Level</button>
+
+        <div class="level-container" id="levelContainer" style="display: none;">
+            <!-- Main horizontal level -->
+            <div class="horizontal-level">
+                <div class="level-tube">
+                    <div class="level-marks">
+                        <div class="mark"></div>
+                        <div class="mark"></div>
+                        <div class="mark center"></div>
+                        <div class="mark"></div>
+                        <div class="mark"></div>
+                    </div>
+                    <div class="bubble" id="horizontalBubble">
+                        <div class="bubble-ball"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Angle displays -->
+            <div class="angle-display">
+                <div class="angle-box">
+                    <div class="angle-label">X-Axis Tilt</div>
+                    <div class="angle-value">
+                        <span id="angleX">0.0</span><span class="angle-unit">°</span>
+                    </div>
+                </div>
+                <div class="angle-box">
+                    <div class="angle-label">Y-Axis Tilt</div>
+                    <div class="angle-value">
+                        <span id="angleY">0.0</span><span class="angle-unit">°</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arched bubble levels -->
+            <div class="arched-levels">
+                <div class="arch-level">
+                    <div class="arch-label">X-Axis</div>
+                    <div class="arch-container">
+                        <div class="arch-tube">
+                            <div class="arch-marks"></div>
+                            <div class="arch-bubble" id="archBubbleX">
+                                <div class="arch-bubble-inner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="arch-level">
+                    <div class="arch-label">Y-Axis</div>
+                    <div class="arch-container">
+                        <div class="arch-tube">
+                            <div class="arch-marks"></div>
+                            <div class="arch-bubble" id="archBubbleY">
+                                <div class="arch-bubble-inner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Level status -->
+            <div class="level-status">
+                <div class="status-text" id="statusText">Initializing...</div>
+            </div>
+
+            <div class="calibration-hint">
+                💡 Lay phone flat on surface to check level
+            </div>
+        </div>
+    </div>
+
+    <div class="error-screen" id="errorScreen">
+        <div class="error-content">
+            <div class="error-icon">⚠️</div>
+            <div class="error-title">Accelerometer Not Available</div>
+            <div class="error-message">
+                This tool requires motion sensors to work. Please make sure you're on a mobile device with sensor support.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const startButton = document.getElementById('startButton');
+        const levelContainer = document.getElementById('levelContainer');
+        const errorScreen = document.getElementById('errorScreen');
+        const horizontalBubble = document.getElementById('horizontalBubble');
+        const archBubbleX = document.getElementById('archBubbleX');
+        const archBubbleY = document.getElementById('archBubbleY');
+        const angleXDisplay = document.getElementById('angleX');
+        const angleYDisplay = document.getElementById('angleY');
+        const statusText = document.getElementById('statusText');
+
+        let audioContext;
+        let isActive = false;
+        let lastBeepTime = 0;
+
+        // Calibration offset
+        let calibrationOffset = { x: 0, y: 0 };
+
+        // Initialize audio
+        function initAudio() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        // Beep when level
+        function playBeep() {
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 880;
+            oscillator.type = 'sine';
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
+        // Check for accelerometer
+        function checkAccelerometer() {
+            return new Promise((resolve) => {
+                if (!window.DeviceMotionEvent) {
+                    resolve(false);
+                    return;
+                }
+
+                let hasAccel = false;
+                const timeout = setTimeout(() => {
+                    window.removeEventListener('devicemotion', checkHandler);
+                    resolve(hasAccel);
+                }, 2000);
+
+                function checkHandler(event) {
+                    if (event.accelerationIncludingGravity && 
+                        (event.accelerationIncludingGravity.x !== null || 
+                         event.accelerationIncludingGravity.y !== null)) {
+                        hasAccel = true;
+                        clearTimeout(timeout);
+                        window.removeEventListener('devicemotion', checkHandler);
+                        resolve(true);
+                    }
+                }
+
+                window.addEventListener('devicemotion', checkHandler);
+            });
+        }
+
+        startButton.addEventListener('click', async () => {
+            initAudio();
+
+            const hasAccel = await checkAccelerometer();
+            if (!hasAccel) {
+                errorScreen.style.display = 'flex';
+                return;
+            }
+
+            if (typeof DeviceMotionEvent !== 'undefined' && 
+                typeof DeviceMotionEvent.requestPermission === 'function') {
+                try {
+                    const permissionState = await DeviceMotionEvent.requestPermission();
+                    if (permissionState === 'granted') {
+                        startLevel();
+                    } else {
+                        errorScreen.style.display = 'flex';
+                    }
+                } catch (error) {
+                    errorScreen.style.display = 'flex';
+                }
+            } else {
+                startLevel();
+            }
+        });
+
+        function startLevel() {
+            startButton.style.display = 'none';
+            levelContainer.style.display = 'block';
+            isActive = true;
+            window.addEventListener('devicemotion', handleMotion);
+        }
+
+        function handleMotion(event) {
+            if (!isActive) return;
+
+            const accel = event.accelerationIncludingGravity;
+            if (!accel || accel.x === null || accel.y === null) return;
+
+            // Get acceleration components
+            const x = accel.x || 0;
+            const y = accel.y || 0;
+            const z = accel.z || 0;
+
+            // Calculate tilt angles in degrees using trigonometry
+            // When flat on table: x≈0, y≈0, z≈9.8 (or -9.8 depending on orientation)
+            // atan2 gives us the angle of tilt from the gravity vector
+            
+            // Tilt around Y axis (rolling left-right) - use x component
+            const angleX = Math.atan2(x, Math.sqrt(y * y + z * z)) * (180 / Math.PI);
+            
+            // Tilt around X axis (pitching forward-back) - use y component  
+            const angleY = Math.atan2(y, Math.sqrt(x * x + z * z)) * (180 / Math.PI);
+
+            // Update angle displays
+            angleXDisplay.textContent = angleX.toFixed(1);
+            angleYDisplay.textContent = angleY.toFixed(1);
+
+            // Update center bubble in 2D
+            updateCenterBubble(angleX, angleY);
+
+            // Update arched bubbles on their respective axes
+            updateArchBubbleX(angleX);
+            updateArchBubbleY(angleY);
+
+            // Update status
+            updateStatus(angleX, angleY);
+        }
+
+        function updateCenterBubble(angleX, angleY) {
+            // Bubble moves opposite to tilt direction (floats "uphill")
+            // Map angles to position within the tube
+            const maxAngle = 30; // degrees
+            const tubeElement = horizontalBubble.parentElement;
+            const tubeWidth = tubeElement.offsetWidth;
+            const tubeHeight = tubeElement.offsetHeight;
+            
+            // Calculate bubble position as percentage offsets from center
+            // Negative angles because bubble floats opposite to tilt
+            const xOffset = (-angleX / maxAngle) * 40; // percentage
+            const yOffset = (-angleY / maxAngle) * 35; // percentage (smaller range for vertical)
+            
+            // Clamp to reasonable bounds
+            const clampedX = Math.max(-45, Math.min(45, xOffset));
+            const clampedY = Math.max(-40, Math.min(40, yOffset));
+            
+            horizontalBubble.style.left = `calc(50% + ${clampedX}%)`;
+            horizontalBubble.style.top = `calc(50% + ${clampedY}%)`;
+        }
+
+        function updateArchBubbleX(angleX) {
+            // X-axis bubble moves vertically based on X tilt
+            // Bubble floats up when tilted in positive X direction
+            const maxAngle = 45; // degrees
+            const maxMovement = 50; // pixels from center
+            
+            // Map angle to vertical position (negative because bubble floats up when tilted)
+            const offset = (-angleX / maxAngle) * maxMovement;
+            const clampedOffset = Math.max(-maxMovement, Math.min(maxMovement, offset));
+            
+            // Base position is 50px from bottom, offset moves it up/down
+            const position = 50 + clampedOffset;
+            archBubbleX.style.bottom = position + 'px';
+        }
+
+        function updateArchBubbleY(angleY) {
+            // Y-axis bubble moves vertically based on Y tilt
+            // Bubble floats up when tilted in positive Y direction
+            const maxAngle = 45; // degrees
+            const maxMovement = 50; // pixels from center
+            
+            // Map angle to vertical position (negative because bubble floats up when tilted)
+            const offset = (-angleY / maxAngle) * maxMovement;
+            const clampedOffset = Math.max(-maxMovement, Math.min(maxMovement, offset));
+            
+            // Base position is 50px from bottom, offset moves it up/down
+            const position = 50 + clampedOffset;
+            archBubbleY.style.bottom = position + 'px';
+        }
+
+        let lastVibrationTime = 0;
+
+        function updateStatus(angleX, angleY) {
+            const threshold = 0.5; // degrees
+            const slightThreshold = 2.0; // degrees
+
+            const totalTilt = Math.sqrt(angleX * angleX + angleY * angleY);
+
+            if (totalTilt < threshold) {
+                statusText.textContent = '✓ LEVEL';
+                statusText.className = 'status-text level';
+                
+                const now = Date.now();
+                // Beep when level (but not too frequently)
+                if (now - lastBeepTime > 2000) {
+                    playBeep();
+                    lastBeepTime = now;
+                }
+                
+                // Vibrate when level
+                if (now - lastVibrationTime > 2000 && 'vibrate' in navigator) {
+                    navigator.vibrate(50);
+                    lastVibrationTime = now;
+                }
+            } else if (totalTilt < slightThreshold) {
+                statusText.textContent = '~ Nearly Level';
+                statusText.className = 'status-text slight';
+            } else {
+                // Determine primary tilt direction
+                let direction = '';
+                if (Math.abs(angleX) > Math.abs(angleY)) {
+                    direction = angleX > 0 ? 'Right' : 'Left';
+                } else {
+                    direction = angleY > 0 ? 'Forward' : 'Backward';
+                }
+                statusText.textContent = `↗ Tilted ${direction}`;
+                statusText.className = 'status-text tilted';
+            }
+        }
+    </script>
+</body>
+</html>

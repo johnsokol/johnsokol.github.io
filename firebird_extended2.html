@@ -1,0 +1,145 @@
+  function scheduleMusic(startTime) {
+            let time = 0;
+
+            // SECTION 1: INTRODUCTION - Chromatic descending theme (0-25 seconds)
+            // CHANGED: Loop count from 6 to 28. (2.5 beats * 28 = 70 beats, which is ~25s at 168BPM)
+            for (let i = 0; i < 28; i++) {
+                const melody = [noteFreq.E5, noteFreq.Ds5, noteFreq.D5, noteFreq.Cs5, noteFreq.C5, noteFreq.B4, noteFreq.As4, noteFreq.A4];
+                const durations = [0.25, 0.25, 0.25, 0.25, 0.5, 0.25, 0.25, 0.5];
+                let t = time;
+                for (let j = 0; j < melody.length; j++) {
+                    createNote(melody[j], startTime + beatToSeconds(t), beatToSeconds(durations[j] * 0.8), 'triangle', 0.25);
+                    t += durations[j];
+                }
+                const bassRoot = [noteFreq.E2, noteFreq.F2, noteFreq.Fs2][i % 3];
+                for (let k = 0; k < 2; k++) {
+                    createNote(bassRoot, startTime + beatToSeconds(time + k * 1), beatToSeconds(0.4), 'sawtooth', 0.35);
+                }
+                time += 2.5;
+            }
+
+            // SECTION 2: DEVELOPMENT - Aggressive rhythmic patterns (25-50 seconds)
+            // CHANGED: Loop count from 10 to 28. (2.5 beats * 28 = 70 beats, ~25s)
+            for (let cycle = 0; cycle < 28; cycle++) {
+                const ascendingRun = [noteFreq.E4, noteFreq.Gs4, noteFreq.B4, noteFreq.E5, noteFreq.Gs5];
+                for (let i = 0; i < ascendingRun.length; i++) {
+                    createNote(ascendingRun[i], startTime + beatToSeconds(time + i * 0.15), beatToSeconds(0.12), 'square', 0.2);
+                }
+                if (cycle % 2 === 0) {
+                    createChord(
+                        [noteFreq.Fs4, noteFreq.A4, noteFreq.Cs5],
+                        startTime + beatToSeconds(time + 1),
+                        beatToSeconds(0.15),
+                        'square',
+                        0.22
+                    );
+                }
+                createNote(noteFreq.Fs2, startTime + beatToSeconds(time), beatToSeconds(0.3), 'sawtooth', 0.4);
+                createNote(noteFreq.Cs3, startTime + beatToSeconds(time + 0.5), beatToSeconds(0.3), 'sawtooth', 0.35);
+                time += 2.5;
+            }
+
+            // SECTION 3: WOODWIND INTERLUDE - Lyrical passage (50-75 seconds)
+            // CHANGED: Loop count from 4 to 12. (6 beats * 12 = 72 beats, ~25s)
+            const woodwindMelody = [
+                noteFreq.A4, noteFreq.B4, noteFreq.Cs5, noteFreq.D5, noteFreq.E5,
+                noteFreq.D5, noteFreq.Cs5, noteFreq.B4, noteFreq.A4, noteFreq.Gs4
+            ];
+            for (let rep = 0; rep < 12; rep++) {
+                let t = time;
+                for (let i = 0; i < woodwindMelody.length; i++) {
+                    createNote(woodwindMelody[i], startTime + beatToSeconds(t), beatToSeconds(0.5), 'sine', 0.18);
+                    t += 0.6;
+                }
+                createChord(
+                    [noteFreq.A3, noteFreq.Cs4, noteFreq.E4],
+                    startTime + beatToSeconds(time),
+                    beatToSeconds(6),
+                    'triangle',
+                    0.08
+                );
+                time += 6;
+            }
+
+            // SECTION 4: STRING FRENZY - Fast tremolos (75-100 seconds)
+            // CHANGED: Loop count from 25 to 70. (1 beat * 70 = 70 beats, ~25s)
+            for (let i = 0; i < 70; i++) {
+                const stringNotes = [noteFreq.E4, noteFreq.G4, noteFreq.B4];
+                stringNotes.forEach((note, idx) => {
+                    createNote(note, startTime + beatToSeconds(time + i + idx * 0.04), beatToSeconds(0.08), 'triangle', 0.15);
+                });
+                const chromaticLine = [noteFreq.E5, noteFreq.Ds5, noteFreq.D5, noteFreq.Cs5];
+                if (i % 6 === 0) {
+                    chromaticLine.forEach((note, idx) => {
+                        createNote(note, startTime + beatToSeconds(time + i + idx * 0.25), beatToSeconds(0.2), 'square', 0.18);
+                    });
+                }
+                time += 1;
+            }
+
+            // SECTION 5: BRASS CLIMAX - Powerful fanfares (100-125 seconds)
+            // CHANGED: Loop count from 8 to 23. (3 beats * 23 = 69 beats, ~25s)
+            for (let i = 0; i < 23; i++) {
+                const fanfare = [noteFreq.C5, noteFreq.E5, noteFreq.G5, noteFreq.C6];
+                fanfare.forEach((note, idx) => {
+                    createNote(note, startTime + beatToSeconds(time + idx * 0.4), beatToSeconds(0.35), 'sawtooth', 0.25);
+                });
+                createChord(
+                    [noteFreq.C4, noteFreq.E4, noteFreq.G4, noteFreq.C5],
+                    startTime + beatToSeconds(time + 1.5),
+                    beatToSeconds(0.5),
+                    'sawtooth',
+                    0.28
+                );
+                createNote(noteFreq.C2, startTime + beatToSeconds(time), beatToSeconds(0.3), 'sawtooth', 0.45);
+                createNote(noteFreq.C2, startTime + beatToSeconds(time + 2), beatToSeconds(0.3), 'sawtooth', 0.45);
+                time += 3;
+            }
+
+            // SECTION 6: RECAPITULATION - Return of opening (125-150 seconds)
+            // CHANGED: Loop count from 8 to 23. (3 beats * 23 = 69 beats, ~25s)
+            for (let i = 0; i < 23; i++) {
+                const melody = [noteFreq.E5, noteFreq.Ds5, noteFreq.D5, noteFreq.Cs5, noteFreq.C5, noteFreq.B4];
+                let t = time;
+                for (let j = 0; j < melody.length; j++) {
+                    createNote(melody[j], startTime + beatToSeconds(t), beatToSeconds(0.4), 'triangle', 0.28);
+                    createNote(melody[j] * 0.75, startTime + beatToSeconds(t), beatToSeconds(0.4), 'triangle', 0.15);
+                    t += 0.35;
+                }
+                createNote(noteFreq.E2, startTime + beatToSeconds(time), beatToSeconds(0.6), 'sawtooth', 0.4);
+                createNote(noteFreq.B2, startTime + beatToSeconds(time + 1.5), beatToSeconds(0.6), 'sawtooth', 0.38);
+                time += 3;
+            }
+
+            // SECTION 7: CODA - Wild accelerating finish (150-165 seconds)
+            // CHANGED: Loop count from 30 to 280. (0.15 beats * 280 = 42 beats, ~15s)
+            for (let i = 0; i < 280; i++) {
+                const wildRun = [noteFreq.E5, noteFreq.Fs5, noteFreq.Gs5, noteFreq.A5, noteFreq.B5, noteFreq.Cs6];
+                const randomNote = wildRun[Math.floor(Math.random() * wildRun.length)];
+                createNote(randomNote, startTime + beatToSeconds(time + i * 0.15), beatToSeconds(0.1), 'square', 0.22);
+                if (i % 3 === 0) {
+                    createNote(noteFreq.E2, startTime + beatToSeconds(time + i * 0.15), beatToSeconds(0.2), 'sawtooth', 0.42);
+                }
+            }
+
+            // Final climactic chord
+            // CHANGED: Start time from time + 4.5 to time + 42 (to match end of Coda)
+            const finalChord = [noteFreq.E2, noteFreq.E3, noteFreq.B3, noteFreq.E4, noteFreq.Gs4, noteFreq.B4, noteFreq.E5];
+            createChord(finalChord, startTime + beatToSeconds(time + 42), beatToSeconds(3), 'sawtooth', 0.35);
+
+            // CHANGED: Time from 6 to 45 (42 for Coda run + 3 for final chord)
+            time += 45;
+
+            // Schedule completion
+            const totalDuration = beatToSeconds(time) * 1000;
+            setTimeout(() => {
+                if (isPlaying) {
+                    stopPlayback();
+                    setStatus('Playback complete. Click Play to repeat.', 'success');
+                    document.getElementById('playBtn').disabled = false;
+                    document.getElementById('tempo').disabled = false;
+                    document.getElementById('volume').disabled = false;
+                }
+            }, totalDuration + 1000);
+        }
+

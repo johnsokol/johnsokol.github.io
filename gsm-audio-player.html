@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GSM Audio Player</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+        }
+
+        .upload-area:hover {
+            background: #f0f2ff;
+            border-color: #764ba2;
+        }
+
+        .upload-area.drag-over {
+            background: #e8ebff;
+            border-color: #764ba2;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .upload-subtext {
+            color: #999;
+            font-size: 13px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .player-section {
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        .player-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .file-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .waveform-container {
+            background: #f5f5f5;
+            border-radius: 10px;
+            height: 80px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #waveform {
+            width: 100%;
+            height: 100%;
+        }
+
+        .progress-bar {
+            background: #e0e0e0;
+            height: 6px;
+            border-radius: 3px;
+            margin-bottom: 10px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+        .time-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .control-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .control-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .control-btn.play {
+            width: 80px;
+            height: 80px;
+            font-size: 32px;
+        }
+
+        .control-btn.secondary {
+            background: #f0f0f0;
+            color: #667eea;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .control-btn.secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .volume-icon {
+            font-size: 20px;
+            color: #667eea;
+        }
+
+        .volume-slider {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+        }
+
+        .volume-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border: none;
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .status.warning {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .loading {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .control-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+
+            .control-btn.play {
+                width: 70px;
+                height: 70px;
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 GSM Audio Player</h1>
+            <div class="subtitle">Play raw GSM and WAV audio files in your browser</div>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Click to upload or drag & drop</div>
+                <div class="upload-subtext">Supports raw .gsm files and WAV audio</div>
+            </div>
+            <input type="file" id="fileInput" accept=".gsm,.wav" />
+        </div>
+
+        <div class="player-section" id="playerSection">
+            <div class="player-info">
+                <div class="file-name" id="fileName">No file loaded</div>
+                <div class="file-details">
+                    <span id="fileSize">0 KB</span>
+                    <span id="sampleRate">8000 Hz</span>
+                    <span id="channels">Mono</span>
+                </div>
+            </div>
+
+            <div class="waveform-container">
+                <canvas id="waveform"></canvas>
+            </div>
+
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <div class="time-info">
+                <span id="currentTime">0:00</span>
+                <span id="duration">0:00</span>
+            </div>
+
+            <div class="controls">
+                <button class="control-btn secondary" id="rewindBtn" title="Rewind 5s">⏪</button>
+                <button class="control-btn play" id="playBtn" title="Play">▶️</button>
+                <button class="control-btn secondary" id="forwardBtn" title="Forward 5s">⏩</button>
+                <button class="control-btn secondary" id="stopBtn" title="Stop">⏹️</button>
+            </div>
+
+            <div class="volume-control">
+                <span class="volume-icon">🔊</span>
+                <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="80" />
+                <span id="volumeValue">80%</span>
+            </div>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // GSM 06.10 Decoder Implementation
+        // Based on the reference C/Java implementation
+        
+        const GSM_FRAME_SIZE = 33;
+        const GSM_SAMPLES_PER_FRAME = 160;
+        const GSM_SAMPLE_RATE = 8000;
+
+        // GSM lookup tables
+        const gsm_QLB = [3277, 11469, 21299, 32767];
+        const gsm_FAC = [18431, 20479, 22527, 24575, 26623, 28671, 30719, 32767];
+        
+        // Helper functions for signed 16-bit arithmetic
+        function toInt16(val) {
+            val = val & 0xFFFF;
+            return val > 32767 ? val - 65536 : val;
+        }
+        
+        function GSM_ADD(a, b) {
+            const result = toInt16(a) + toInt16(b);
+            if (result > 32767) return 32767;
+            if (result < -32768) return -32768;
+            return result;
+        }
+        
+        function GSM_SUB(a, b) {
+            const result = toInt16(a) - toInt16(b);
+            if (result > 32767) return 32767;
+            if (result < -32768) return -32768;
+            return result;
+        }
+        
+        function GSM_MULT_R(a, b) {
+            a = toInt16(a);
+            b = toInt16(b);
+            if (a === -32768 && b === -32768) return 32767;
+            const prod = a * b + 16384;
+            const result = prod >> 15;
+            if (result > 32767) return 32767;
+            if (result < -32768) return -32768;
+            return result;
+        }
+        
+        function SASR(value, shift) {
+            return toInt16(value) >> shift;
+        }
+        
+        function gsm_asl(value, shift) {
+            if (shift >= 0) {
+                const result = toInt16(value) << shift;
+                if (result > 32767) return 32767;
+                if (result < -32768) return -32768;
+                return result;
+            } else {
+                return toInt16(value) >> (-shift);
+            }
+        }
+        
+        function gsm_asr(value, shift) {
+            return toInt16(value) >> shift;
+        }
+
+        class GSMDecoder {
+            constructor() {
+                this.dp0 = new Int16Array(280);
+                this.v = new Int16Array(9);
+                this.LARpp = [new Int16Array(8), new Int16Array(8)];
+                this.j = 0;
+                this.nrp = 40;
+                this.msr = 0;
+            }
+
+            decodeFrame(frame) {
+                const samples = new Int16Array(GSM_SAMPLES_PER_FRAME);
+                if (frame.length < GSM_FRAME_SIZE) return samples;
+
+                const params = this.unpackFrame(frame);
+                this.Gsm_Decoder(params, samples);
+                
+                return samples;
+            }
+
+            unpackFrame(frame) {
+                const params = {
+                    LARc: new Int16Array(8),
+                    Nc: new Int16Array(4),
+                    bc: new Int16Array(4),
+                    Mc: new Int16Array(4),
+                    xmaxc: new Int16Array(4),
+                    xmc: new Int16Array(52)
+                };
+
+                let c = 0;
+                
+                if (((frame[c] >> 4) & 0x0F) !== 0xD) {
+                    console.warn('Invalid GSM magic');
+                }
+
+                params.LARc[0] = (frame[c++] & 0xF) << 2;
+                params.LARc[0] |= (frame[c] >> 6) & 0x3;
+                params.LARc[1] = frame[c++] & 0x3F;
+                params.LARc[2] = (frame[c] >> 3) & 0x1F;
+                params.LARc[3] = (frame[c++] & 0x7) << 2;
+                params.LARc[3] |= (frame[c] >> 6) & 0x3;
+                params.LARc[4] = (frame[c] >> 2) & 0xF;
+                params.LARc[5] = (frame[c++] & 0x3) << 2;
+                params.LARc[5] |= (frame[c] >> 6) & 0x3;
+                params.LARc[6] = (frame[c] >> 3) & 0x7;
+                params.LARc[7] = frame[c++] & 0x7;
+                
+                params.Nc[0] = (frame[c] >> 1) & 0x7F;
+                params.bc[0] = (frame[c++] & 0x1) << 1;
+                params.bc[0] |= (frame[c] >> 7) & 0x1;
+                params.Mc[0] = (frame[c] >> 5) & 0x3;
+                params.xmaxc[0] = (frame[c++] & 0x1F) << 1;
+                params.xmaxc[0] |= (frame[c] >> 7) & 0x1;
+                params.xmc[0] = (frame[c] >> 4) & 0x7;
+                params.xmc[1] = (frame[c] >> 1) & 0x7;
+                params.xmc[2] = (frame[c++] & 0x1) << 2;
+                params.xmc[2] |= (frame[c] >> 6) & 0x3;
+                params.xmc[3] = (frame[c] >> 3) & 0x7;
+                params.xmc[4] = frame[c++] & 0x7;
+                params.xmc[5] = (frame[c] >> 5) & 0x7;
+                params.xmc[6] = (frame[c] >> 2) & 0x7;
+                params.xmc[7] = (frame[c++] & 0x3) << 1;
+                params.xmc[7] |= (frame[c] >> 7) & 0x1;
+                params.xmc[8] = (frame[c] >> 4) & 0x7;
+                params.xmc[9] = (frame[c] >> 1) & 0x7;
+                params.xmc[10] = (frame[c++] & 0x1) << 2;
+                params.xmc[10] |= (frame[c] >> 6) & 0x3;
+                params.xmc[11] = (frame[c] >> 3) & 0x7;
+                params.xmc[12] = frame[c++] & 0x7;
+                
+                params.Nc[1] = (frame[c] >> 1) & 0x7F;
+                params.bc[1] = (frame[c++] & 0x1) << 1;
+                params.bc[1] |= (frame[c] >> 7) & 0x1;
+                params.Mc[1] = (frame[c] >> 5) & 0x3;
+                params.xmaxc[1] = (frame[c++] & 0x1F) << 1;
+                params.xmaxc[1] |= (frame[c] >> 7) & 0x1;
+                params.xmc[13] = (frame[c] >> 4) & 0x7;
+                params.xmc[14] = (frame[c] >> 1) & 0x7;
+                params.xmc[15] = (frame[c++] & 0x1) << 2;
+                params.xmc[15] |= (frame[c] >> 6) & 0x3;
+                params.xmc[16] = (frame[c] >> 3) & 0x7;
+                params.xmc[17] = frame[c++] & 0x7;
+                params.xmc[18] = (frame[c] >> 5) & 0x7;
+                params.xmc[19] = (frame[c] >> 2) & 0x7;
+                params.xmc[20] = (frame[c++] & 0x3) << 1;
+                params.xmc[20] |= (frame[c] >> 7) & 0x1;
+                params.xmc[21] = (frame[c] >> 4) & 0x7;
+                params.xmc[22] = (frame[c] >> 1) & 0x7;
+                params.xmc[23] = (frame[c++] & 0x1) << 2;
+                params.xmc[23] |= (frame[c] >> 6) & 0x3;
+                params.xmc[24] = (frame[c] >> 3) & 0x7;
+                params.xmc[25] = frame[c++] & 0x7;
+                
+                params.Nc[2] = (frame[c] >> 1) & 0x7F;
+                params.bc[2] = (frame[c++] & 0x1) << 1;
+                params.bc[2] |= (frame[c] >> 7) & 0x1;
+                params.Mc[2] = (frame[c] >> 5) & 0x3;
+                params.xmaxc[2] = (frame[c++] & 0x1F) << 1;
+                params.xmaxc[2] |= (frame[c] >> 7) & 0x1;
+                params.xmc[26] = (frame[c] >> 4) & 0x7;
+                params.xmc[27] = (frame[c] >> 1) & 0x7;
+                params.xmc[28] = (frame[c++] & 0x1) << 2;
+                params.xmc[28] |= (frame[c] >> 6) & 0x3;
+                params.xmc[29] = (frame[c] >> 3) & 0x7;
+                params.xmc[30] = frame[c++] & 0x7;
+                params.xmc[31] = (frame[c] >> 5) & 0x7;
+                params.xmc[32] = (frame[c] >> 2) & 0x7;
+                params.xmc[33] = (frame[c++] & 0x3) << 1;
+                params.xmc[33] |= (frame[c] >> 7) & 0x1;
+                params.xmc[34] = (frame[c] >> 4) & 0x7;
+                params.xmc[35] = (frame[c] >> 1) & 0x7;
+                params.xmc[36] = (frame[c++] & 0x1) << 2;
+                params.xmc[36] |= (frame[c] >> 6) & 0x3;
+                params.xmc[37] = (frame[c] >> 3) & 0x7;
+                params.xmc[38] = frame[c++] & 0x7;
+                
+                params.Nc[3] = (frame[c] >> 1) & 0x7F;
+                params.bc[3] = (frame[c++] & 0x1) << 1;
+                params.bc[3] |= (frame[c] >> 7) & 0x1;
+                params.Mc[3] = (frame[c] >> 5) & 0x3;
+                params.xmaxc[3] = (frame[c++] & 0x1F) << 1;
+                params.xmaxc[3] |= (frame[c] >> 7) & 0x1;
+                params.xmc[39] = (frame[c] >> 4) & 0x7;
+                params.xmc[40] = (frame[c] >> 1) & 0x7;
+                params.xmc[41] = (frame[c++] & 0x1) << 2;
+                params.xmc[41] |= (frame[c] >> 6) & 0x3;
+                params.xmc[42] = (frame[c] >> 3) & 0x7;
+                params.xmc[43] = frame[c++] & 0x7;
+                params.xmc[44] = (frame[c] >> 5) & 0x7;
+                params.xmc[45] = (frame[c] >> 2) & 0x7;
+                params.xmc[46] = (frame[c++] & 0x3) << 1;
+                params.xmc[46] |= (frame[c] >> 7) & 0x1;
+                params.xmc[47] = (frame[c] >> 4) & 0x7;
+                params.xmc[48] = (frame[c] >> 1) & 0x7;
+                params.xmc[49] = (frame[c++] & 0x1) << 2;
+                params.xmc[49] |= (frame[c] >> 6) & 0x3;
+                params.xmc[50] = (frame[c] >> 3) & 0x7;
+                params.xmc[51] = frame[c] & 0x7;
+
+                return params;
+            }
+
+            Gsm_Decoder(params, output) {
+                const erp = new Int16Array(160);
+                
+                // Debug first frame
+                if (!this.debugged) {
+                    console.log('Params:', {
+                        LARc: params.LARc,
+                        Nc: params.Nc,
+                        bc: params.bc,
+                        Mc: params.Mc,
+                        xmaxc: params.xmaxc,
+                        xmc: params.xmc.slice(0, 13)
+                    });
+                    this.debugged = true;
+                }
+                
+                // Decode all 4 subframes
+                for (let k = 0; k < 4; k++) {
+                    const xmc = new Int16Array(13);
+                    for (let i = 0; i < 13; i++) {
+                        xmc[i] = params.xmc[k * 13 + i];
+                    }
+                    
+                    const xM = this.RPE_decoding(xmc, params.xmaxc[k], params.Mc[k]);
+                    const ep = this.LTP_synthesis(xM, params.Nc[k], params.bc[k]);
+                    
+                    if (k === 0 && !this.debugged2) {
+                        console.log('Subframe 0 xM:', xM.slice(0, 10));
+                        console.log('Subframe 0 ep:', ep.slice(0, 10));
+                        console.log('xM range:', Math.min(...xM), Math.max(...xM));
+                        console.log('ep range:', Math.min(...ep), Math.max(...ep));
+                        this.debugged2 = true;
+                    }
+                    
+                    for (let i = 0; i < 40; i++) {
+                        erp[k * 40 + i] = ep[i];
+                    }
+                }
+                
+                if (!this.debugged3) {
+                    console.log('Before short term synthesis, erp:', erp.slice(0, 20));
+                    console.log('erp range:', Math.min(...erp), Math.max(...erp));
+                    this.debugged3 = true;
+                }
+                
+                // Short term synthesis
+                this.Short_term_synthesis(params.LARc, erp, output);
+                
+                if (!this.debugged4) {
+                    console.log('After short term synthesis:', output.slice(0, 20));
+                    console.log('output range:', Math.min(...output), Math.max(...output));
+                    this.debugged4 = true;
+                }
+                
+                // Postprocessing
+                this.Postprocessing(output);
+                
+                if (!this.debugged5) {
+                    console.log('After postprocessing:', output.slice(0, 20));
+                    console.log('final range:', Math.min(...output), Math.max(...output));
+                    this.debugged5 = true;
+                }
+            }
+
+            RPE_decoding(xMc, xmaxc, Mc) {
+                const xM = new Int16Array(40);
+                const xmp = new Int16Array(13);
+                
+                // APCM quantization xmaxc to exp/mant
+                let exp = 0;
+                if (xmaxc > 15) {
+                    exp = SASR(xmaxc, 3) - 1;
+                }
+                let mant = GSM_SUB(xmaxc, exp << 3);
+                
+                if (mant === 0) {
+                    exp = -4;
+                    mant = 7;
+                } else {
+                    let itest = 0;
+                    for (let i = 0; i <= 2; i++) {
+                        if (mant > 7) itest |= (1 << i);
+                        mant = mant << 1;
+                    }
+                    mant = mant >> 1;
+                    exp = GSM_SUB(exp, itest);
+                    mant = GSM_SUB(mant, 8);
+                }
+                
+                // APCM inverse quantization
+                const temp1 = gsm_FAC[mant];
+                const temp2 = GSM_SUB(6, exp);
+                const temp3 = gsm_asl(1, GSM_SUB(temp2, 1));
+                
+                for (let i = 0; i < 13; i++) {
+                    let temp = GSM_SUB((xMc[i] << 1), 7);
+                    temp = temp << 12;
+                    temp = GSM_MULT_R(temp1, temp);
+                    temp = GSM_ADD(temp, temp3);
+                    xmp[i] = gsm_asr(temp, temp2);
+                }
+                
+                // Grid positioning
+                for (let i = 0; i < 40; i++) xM[i] = 0;
+                for (let i = 0; i < 13; i++) {
+                    xM[Mc + 3 * i] = xmp[i];
+                }
+                
+                return xM;
+            }
+
+            LTP_synthesis(xM, Nc, bc) {
+                const ep = new Int16Array(40);
+                const bcValue = gsm_QLB[bc];
+                let effectiveNc = (Nc >= 40 && Nc <= 120) ? Nc : this.nrp;
+                this.nrp = effectiveNc;
+                
+                for (let k = 0; k < 40; k++) {
+                    const dpIndex = 120 + k - effectiveNc;
+                    const dpVal = toInt16(this.dp0[dpIndex]);
+                    const ltpVal = GSM_MULT_R(bcValue, dpVal);
+                    const xMVal = toInt16(xM[k]);
+                    ep[k] = GSM_ADD(xMVal, ltpVal);
+                }
+                
+                // Shift delay line
+                for (let i = 0; i < 240; i++) {
+                    this.dp0[i] = this.dp0[i + 40];
+                }
+                
+                // Add new samples
+                for (let i = 0; i < 40; i++) {
+                    this.dp0[240 + i] = ep[i];
+                }
+                
+                return ep;
+            }
+
+            Short_term_synthesis(LARc, erp, output) {
+                const LARpp_old = this.LARpp[this.j];
+                const LARpp_new = this.LARpp[this.j ^= 1];
+                
+                this.Decode_LARs(LARc, LARpp_new);
+                
+                const rp = new Int16Array(8);
+                
+                // Interpolate and filter 4 sections
+                this.Coefficients_0_12(LARpp_old, LARpp_new, rp);
+                this.LARp_to_rp(rp);
+                this.Short_term_filter(rp, 13, erp, 0, output, 0);
+                
+                this.Coefficients_13_26(LARpp_old, LARpp_new, rp);
+                this.LARp_to_rp(rp);
+                this.Short_term_filter(rp, 14, erp, 13, output, 13);
+                
+                this.Coefficients_27_39(LARpp_old, LARpp_new, rp);
+                this.LARp_to_rp(rp);
+                this.Short_term_filter(rp, 13, erp, 27, output, 27);
+                
+                for (let i = 0; i < 8; i++) rp[i] = LARpp_new[i];
+                this.LARp_to_rp(rp);
+                this.Short_term_filter(rp, 120, erp, 40, output, 40);
+            }
+
+            Decode_LARs(LARc, LARpp) {
+                // STEP function parameters: [B, MIC, MAC]
+                const params = [
+                    [0, -32, 13107], [0, -32, 13107], [2048, -16, 13107], [-2560, -16, 13107],
+                    [94, -8, 19223], [-1792, -8, 17476], [-341, -4, 31454], [-1144, -4, 29708]
+                ];
+                
+                for (let i = 0; i < 8; i++) {
+                    let temp = GSM_ADD(LARc[i], params[i][1]); // Add MIC
+                    temp = GSM_MULT_R(params[i][2], temp);      // Multiply by MAC
+                    temp = GSM_ADD(temp, temp);                  // Double it
+                    LARpp[i] = GSM_ADD(temp, params[i][0]);     // Add B offset
+                }
+            }
+
+            Coefficients_0_12(old_r, new_r, out) {
+                for (let i = 0; i < 8; i++) {
+                    const old_val = toInt16(old_r[i]);
+                    const new_val = toInt16(new_r[i]);
+                    out[i] = GSM_ADD(SASR(old_val, 2), SASR(new_val, 2));
+                    out[i] = GSM_ADD(out[i], SASR(old_val, 1));
+                }
+            }
+
+            Coefficients_13_26(old_r, new_r, out) {
+                for (let i = 0; i < 8; i++) {
+                    const old_val = toInt16(old_r[i]);
+                    const new_val = toInt16(new_r[i]);
+                    out[i] = GSM_ADD(SASR(old_val, 1), SASR(new_val, 1));
+                }
+            }
+
+            Coefficients_27_39(old_r, new_r, out) {
+                for (let i = 0; i < 8; i++) {
+                    const old_val = toInt16(old_r[i]);
+                    const new_val = toInt16(new_r[i]);
+                    out[i] = GSM_ADD(SASR(old_val, 2), SASR(new_val, 2));
+                    out[i] = GSM_ADD(out[i], SASR(new_val, 1));
+                }
+            }
+
+            LARp_to_rp(LARp) {
+                for (let i = 0; i < 8; i++) {
+                    let temp;
+                    if (LARp[i] < 0) {
+                        temp = (LARp[i] === -32768) ? 32767 : -LARp[i];
+                    } else {
+                        temp = LARp[i];
+                    }
+                    
+                    if (temp < 11059) {
+                        temp = temp << 1;
+                    } else if (temp < 20070) {
+                        temp = temp + 11059;
+                    } else {
+                        temp = GSM_ADD(temp >> 2, 26112);
+                    }
+                    
+                    LARp[i] = (LARp[i] < 0) ? -temp : temp;
+                }
+            }
+
+            Short_term_filter(rp, count, inp, inPos, out, outPos) {
+                for (let k = 0; k < count; k++) {
+                    let sri = toInt16(inp[inPos++]);
+                    for (let i = 7; i >= 0; i--) {
+                        const rpi = toInt16(rp[i]);
+                        const vi = toInt16(this.v[i]);
+                        const prod = GSM_MULT_R(rpi, vi);
+                        sri = GSM_SUB(sri, prod);
+                        const prod2 = GSM_MULT_R(rpi, sri);
+                        this.v[i + 1] = GSM_ADD(vi, prod2);
+                    }
+                    this.v[0] = sri;
+                    out[outPos++] = sri;
+                }
+            }
+
+            Postprocessing(s) {
+                for (let k = 0; k < 160; k++) {
+                    const tmp = GSM_MULT_R(this.msr, 28180);
+                    this.msr = GSM_ADD(s[k], tmp);
+                    const doubled = GSM_ADD(this.msr, this.msr);
+                    s[k] = toInt16(doubled & 0xFFF8);
+                }
+            }
+        }
+
+        // Audio context and variables
+        let audioContext;
+        let audioBuffer;
+        let sourceNode;
+        let gainNode;
+        let isPlaying = false;
+        let startTime = 0;
+        let pauseTime = 0;
+        let animationFrame;
+        let gsmDecoder = new GSMDecoder();
+
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const playerSection = document.getElementById('playerSection');
+        const playBtn = document.getElementById('playBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const rewindBtn = document.getElementById('rewindBtn');
+        const forwardBtn = document.getElementById('forwardBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationEl = document.getElementById('duration');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumeValue = document.getElementById('volumeValue');
+        const statusEl = document.getElementById('status');
+        const waveformCanvas = document.getElementById('waveform');
+        const waveformCtx = waveformCanvas.getContext('2d');
+
+        // Initialize audio context
+        function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                gainNode = audioContext.createGain();
+                gainNode.connect(audioContext.destination);
+                gainNode.gain.value = volumeSlider.value / 100;
+            }
+        }
+
+        // Show status message
+        function showStatus(message, type = 'info') {
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            statusEl.style.display = 'block';
+        }
+
+        // Hide status message
+        function hideStatus() {
+            statusEl.style.display = 'none';
+        }
+
+        // Format time
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Draw waveform
+        function drawWaveform(buffer) {
+            const canvas = waveformCanvas;
+            canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+            canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+            waveformCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            const width = canvas.offsetWidth;
+            const height = canvas.offsetHeight;
+            const data = buffer.getChannelData(0);
+            const step = Math.ceil(data.length / width);
+            const amp = height / 2;
+
+            waveformCtx.fillStyle = '#667eea';
+            waveformCtx.clearRect(0, 0, width, height);
+
+            for (let i = 0; i < width; i++) {
+                let min = 1.0;
+                let max = -1.0;
+
+                for (let j = 0; j < step; j++) {
+                    const datum = data[(i * step) + j];
+                    if (datum < min) min = datum;
+                    if (datum > max) max = datum;
+                }
+
+                waveformCtx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
+            }
+        }
+
+        // Decode GSM audio (simplified - browsers don't natively support GSM)
+        async function decodeGSMAudio(arrayBuffer, fileName) {
+            try {
+                // Try direct decoding first (works for WAV files with PCM)
+                try {
+                    const decoded = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+                    return decoded;
+                } catch (e) {
+                    // If direct decoding fails, try raw GSM decoding
+                    console.log('Attempting raw GSM decode...');
+                    return await decodeRawGSM(arrayBuffer);
+                }
+            } catch (error) {
+                throw new Error(`Failed to decode audio: ${error.message}`);
+            }
+        }
+
+        // Decode raw GSM file
+        async function decodeRawGSM(arrayBuffer) {
+            const gsmData = new Uint8Array(arrayBuffer);
+            const numFrames = Math.floor(gsmData.length / GSM_FRAME_SIZE);
+            
+            if (numFrames === 0) {
+                throw new Error('Invalid GSM file - too small');
+            }
+
+            const numSamples = numFrames * GSM_SAMPLES_PER_FRAME;
+            const pcmData = new Int16Array(numSamples);
+            
+            showStatus(`Decoding ${numFrames} GSM frames...`, 'info');
+            
+            // Create new decoder for this file
+            const decoder = new GSMDecoder();
+            
+            // Decode each frame
+            for (let i = 0; i < numFrames; i++) {
+                const frameOffset = i * GSM_FRAME_SIZE;
+                const frame = gsmData.slice(frameOffset, frameOffset + GSM_FRAME_SIZE);
+                const samples = decoder.decodeFrame(frame);
+                
+                // Debug: log first frame
+                if (i === 0) {
+                    console.log('First frame samples:', samples.slice(0, 20));
+                    console.log('Sample min/max:', Math.min(...samples), Math.max(...samples));
+                }
+                
+                // Copy decoded samples to output
+                pcmData.set(samples, i * GSM_SAMPLES_PER_FRAME);
+                
+                // Update progress periodically
+                if (i % 50 === 0) {
+                    const progress = ((i / numFrames) * 100).toFixed(0);
+                    showStatus(`Decoding: ${progress}%`, 'info');
+                    await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI update
+                }
+            }
+            
+            // Debug: check final PCM data
+            console.log('Total samples:', numSamples);
+            console.log('PCM data sample:', pcmData.slice(0, 20));
+            console.log('PCM min/max:', Math.min(...pcmData), Math.max(...pcmData));
+            
+            const min = Math.min(...pcmData);
+            const max = Math.max(...pcmData);
+            const nonZero = pcmData.filter(v => v !== 0).length;
+            showStatus(`Decoded ${numFrames} frames. Range: [${min}, ${max}], Non-zero: ${nonZero}/${numSamples}`, 'info');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // Convert Int16 PCM to Float32 for Web Audio API
+            const floatData = new Float32Array(numSamples);
+            for (let i = 0; i < numSamples; i++) {
+                floatData[i] = pcmData[i] / 32768.0; // Normalize to -1.0 to 1.0
+            }
+
+            // Create AudioBuffer from decoded PCM data
+            const buffer = audioContext.createBuffer(1, numSamples, GSM_SAMPLE_RATE);
+            buffer.getChannelData(0).set(floatData);
+            
+            return buffer;
+        }
+
+        // Load audio file
+        async function loadAudioFile(file) {
+            showStatus('Loading audio file...', 'info');
+            initAudioContext();
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                
+                // Check if it's a WAV file
+                const view = new DataView(arrayBuffer);
+                const isWav = arrayBuffer.byteLength > 4 && 
+                             view.getUint32(0, false) === 0x52494646; // "RIFF"
+
+                if (isWav) {
+                    showStatus('Decoding WAV file...', 'info');
+                    // Try to decode WAV file
+                    audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+                } else {
+                    // Assume raw GSM format
+                    showStatus('Detected raw GSM format. Decoding...', 'info');
+                    audioBuffer = await decodeRawGSM(arrayBuffer);
+                }
+
+                // Update UI
+                document.getElementById('fileName').textContent = file.name;
+                document.getElementById('fileSize').textContent = `${(file.size / 1024).toFixed(2)} KB`;
+                document.getElementById('sampleRate').textContent = `${audioBuffer.sampleRate} Hz`;
+                document.getElementById('channels').textContent = audioBuffer.numberOfChannels === 1 ? 'Mono' : 'Stereo';
+                durationEl.textContent = formatTime(audioBuffer.duration);
+
+                // Draw waveform
+                drawWaveform(audioBuffer);
+
+                // Show player
+                playerSection.style.display = 'block';
+                showStatus('Audio loaded successfully!', 'success');
+                setTimeout(hideStatus, 3000);
+
+            } catch (error) {
+                showStatus(`Error loading audio: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        // Play audio
+        function play(offset = 0) {
+            if (!audioBuffer) return;
+
+            stop();
+            initAudioContext();
+
+            sourceNode = audioContext.createBufferSource();
+            sourceNode.buffer = audioBuffer;
+            sourceNode.connect(gainNode);
+
+            startTime = audioContext.currentTime - offset;
+            sourceNode.start(0, offset);
+            isPlaying = true;
+            playBtn.textContent = '⏸️';
+            playBtn.title = 'Pause';
+
+            sourceNode.onended = () => {
+                if (isPlaying) {
+                    stop();
+                }
+            };
+
+            updateProgress();
+        }
+
+        // Pause audio
+        function pause() {
+            if (!isPlaying) return;
+
+            pauseTime = audioContext.currentTime - startTime;
+            stop();
+            playBtn.textContent = '▶️';
+            playBtn.title = 'Play';
+        }
+
+        // Stop audio
+        function stop() {
+            if (sourceNode) {
+                try {
+                    sourceNode.stop();
+                } catch (e) {}
+                sourceNode.disconnect();
+                sourceNode = null;
+            }
+            isPlaying = false;
+            cancelAnimationFrame(animationFrame);
+        }
+
+        // Update progress
+        function updateProgress() {
+            if (!isPlaying || !audioBuffer) return;
+
+            const currentTime = audioContext.currentTime - startTime;
+            const progress = (currentTime / audioBuffer.duration) * 100;
+
+            progressFill.style.width = `${Math.min(progress, 100)}%`;
+            currentTimeEl.textContent = formatTime(currentTime);
+
+            if (currentTime < audioBuffer.duration) {
+                animationFrame = requestAnimationFrame(updateProgress);
+            } else {
+                stop();
+                playBtn.textContent = '▶️';
+                playBtn.title = 'Play';
+                progressFill.style.width = '0%';
+                currentTimeEl.textContent = '0:00';
+                pauseTime = 0;
+            }
+        }
+
+        // Event listeners
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                loadAudioFile(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loadAudioFile(file);
+            }
+        });
+
+        playBtn.addEventListener('click', () => {
+            if (!audioBuffer) return;
+
+            if (isPlaying) {
+                pause();
+            } else {
+                play(pauseTime);
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            stop();
+            pauseTime = 0;
+            playBtn.textContent = '▶️';
+            playBtn.title = 'Play';
+            progressFill.style.width = '0%';
+            currentTimeEl.textContent = '0:00';
+        });
+
+        rewindBtn.addEventListener('click', () => {
+            if (!audioBuffer) return;
+            const newTime = Math.max(0, (isPlaying ? audioContext.currentTime - startTime : pauseTime) - 5);
+            if (isPlaying) {
+                play(newTime);
+            } else {
+                pauseTime = newTime;
+                progressFill.style.width = `${(newTime / audioBuffer.duration) * 100}%`;
+                currentTimeEl.textContent = formatTime(newTime);
+            }
+        });
+
+        forwardBtn.addEventListener('click', () => {
+            if (!audioBuffer) return;
+            const currentPos = isPlaying ? audioContext.currentTime - startTime : pauseTime;
+            const newTime = Math.min(audioBuffer.duration, currentPos + 5);
+            if (isPlaying) {
+                play(newTime);
+            } else {
+                pauseTime = newTime;
+                progressFill.style.width = `${(newTime / audioBuffer.duration) * 100}%`;
+                currentTimeEl.textContent = formatTime(newTime);
+            }
+        });
+
+        progressBar.addEventListener('click', (e) => {
+            if (!audioBuffer) return;
+            const rect = progressBar.getBoundingClientRect();
+            const percent = (e.clientX - rect.left) / rect.width;
+            const newTime = percent * audioBuffer.duration;
+            
+            if (isPlaying) {
+                play(newTime);
+            } else {
+                pauseTime = newTime;
+                progressFill.style.width = `${percent * 100}%`;
+                currentTimeEl.textContent = formatTime(newTime);
+            }
+        });
+
+        volumeSlider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            if (gainNode) {
+                gainNode.gain.value = value / 100;
+            }
+            volumeValue.textContent = `${value}%`;
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (!audioBuffer) return;
+
+            switch(e.code) {
+                case 'Space':
+                    e.preventDefault();
+                    playBtn.click();
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    rewindBtn.click();
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    forwardBtn.click();
+                    break;
+            }
+        });
+
+        // Show initial info
+        showStatus('Upload a GSM audio file (.gsm) or WAV file to begin', 'info');
+    </script>
+</body>
+</html>

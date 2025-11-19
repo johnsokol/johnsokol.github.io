@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebird Dance - Web Audio Player</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 700px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            text-align: center;
+            font-size: 2em;
+            margin-bottom: 10px;
+            color: #ff6b6b;
+        }
+        .subtitle {
+            text-align: center;
+            color: #aaa;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+        .device-section {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #ffd93d;
+        }
+        select, input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        select option {
+            background: #2c2c3e;
+            color: #fff;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        button {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: bold;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4);
+        }
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        button.stop-btn {
+            background: linear-gradient(135deg, #666 0%, #555 100%);
+        }
+        .status {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            margin-bottom: 20px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .status.error {
+            background: rgba(255, 107, 107, 0.2);
+            border: 1px solid #ff6b6b;
+        }
+        .status.success {
+            background: rgba(107, 255, 107, 0.2);
+            border: 1px solid #6bff6b;
+        }
+        .info {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 0.9em;
+            color: #aaa;
+            margin-top: 20px;
+        }
+        .info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .layers {
+            margin-top: 20px;
+        }
+        .layer-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .layer-control input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+        .layer-control label {
+            margin: 0;
+            flex-grow: 1;
+            margin-left: 10px;
+            font-weight: normal;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Dance of the Firebird 🔥</h1>
+        <div class="subtitle">Igor Stravinsky - Web Audio Player</div>
+        
+        <div class="device-section">
+            <label for="tempo">Tempo (BPM): <span id="tempoValue">168</span></label>
+            <input type="range" id="tempo" min="100" max="200" value="168">
+            
+            <label for="volume">Master Volume: <span id="volumeValue">50</span>%</label>
+            <input type="range" id="volume" min="0" max="100" value="50">
+        </div>
+
+        <div class="layers">
+            <h3 style="color: #ffd93d; margin-bottom: 15px;">Layers:</h3>
+            <div class="layer-control">
+                <input type="checkbox" id="layer-melody" checked>
+                <label for="layer-melody">Main Melody (Firebird Theme)</label>
+            </div>
+            <div class="layer-control">
+                <input type="checkbox" id="layer-bass" checked>
+                <label for="layer-bass">Bass Ostinato</label>
+            </div>
+            <div class="layer-control">
+                <input type="checkbox" id="layer-chords" checked>
+                <label for="layer-chords">Orchestral Chords</label>
+            </div>
+            <div class="layer-control">
+                <input type="checkbox" id="layer-strings" checked>
+                <label for="layer-strings">String Tremolos</label>
+            </div>
+            <div class="layer-control">
+                <input type="checkbox" id="layer-brass" checked>
+                <label for="layer-brass">Brass Calls</label>
+            </div>
+        </div>
+        
+        <div class="status" id="status">
+            Ready to play through your sound card
+        </div>
+        
+        <div class="controls">
+            <button id="playBtn" onclick="startPlayback()">▶ Play</button>
+            <button id="stopBtn" class="stop-btn" onclick="stopPlayback()" disabled>⏹ Stop</button>
+        </div>
+        
+        <div class="info">
+            <strong>Instructions:</strong>
+            <ul>
+                <li>Adjust tempo and volume as desired</li>
+                <li>Toggle layers on/off to hear different parts</li>
+                <li>Click "Play" to start the performance through your speakers/headphones</li>
+                <li>Works in all modern browsers (Chrome, Firefox, Safari, Edge)</li>
+                <li>No external MIDI device required!</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let audioContext = null;
+        let isPlaying = false;
+        let scheduledNodes = [];
+        let bpm = 168;
+        let masterVolume = 0.5;
+        
+        // Note frequencies in Hz
+        const noteFrequencies = {
+            'C2': 65.41, 'Cs2': 69.30, 'D2': 73.42, 'Ds2': 77.78, 'E2': 82.41, 'F2': 87.31, 'Fs2': 92.50, 'G2': 98.00, 'Gs2': 103.83, 'A2': 110.00, 'As2': 116.54, 'B2': 123.47,
+            'C3': 130.81, 'Cs3': 138.59, 'D3': 146.83, 'Ds3': 155.56, 'E3': 164.81, 'F3': 174.61, 'Fs3': 185.00, 'G3': 196.00, 'Gs3': 207.65, 'A3': 220.00, 'As3': 233.08, 'B3': 246.94,
+            'C4': 261.63, 'Cs4': 277.18, 'D4': 293.66, 'Ds4': 311.13, 'E4': 329.63, 'F4': 349.23, 'Fs4': 369.99, 'G4': 392.00, 'Gs4': 415.30, 'A4': 440.00, 'As4': 466.16, 'B4': 493.88,
+            'C5': 523.25, 'Cs5': 554.37, 'D5': 587.33, 'Ds5': 622.25, 'E5': 659.25, 'F5': 698.46, 'Fs5': 739.99, 'G5': 783.99, 'Gs5': 830.61, 'A5': 880.00, 'As5': 932.33, 'B5': 987.77,
+            'C6': 1046.50, 'Cs6': 1108.73, 'D6': 1174.66
+        };
+
+        function beatToSeconds(beats) {
+            return (beats * 60) / bpm;
+        }
+
+        function createNote(freq, startTime, duration, type = 'triangle', gain = 0.3) {
+            if (!audioContext) return;
+            
+            const osc = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            osc.type = type;
+            osc.frequency.value = freq;
+            
+            // ADSR envelope
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(gain * masterVolume, startTime + 0.02);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+            
+            scheduledNodes.push({ osc, gainNode });
+        }
+
+        function createChord(freqs, startTime, duration, type = 'triangle', gain = 0.25) {
+            freqs.forEach(freq => {
+                createNote(freq, startTime, duration, type, gain);
+            });
+        }
+
+        function setStatus(message, type = '') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + type;
+        }
+
+        function startPlayback() {
+            if (isPlaying) return;
+            
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            isPlaying = true;
+            bpm = parseInt(document.getElementById('tempo').value);
+            masterVolume = parseInt(document.getElementById('volume').value) / 100;
+            
+            const startTime = audioContext.currentTime;
+            
+            document.getElementById('playBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('tempo').disabled = true;
+            document.getElementById('volume').disabled = true;
+            
+            setStatus('Playing Dance of the Firebird...', 'success');
+            
+            scheduleMusic(startTime);
+        }
+
+        function scheduleMusic(startTime) {
+            let time = 0;
+            const layerStates = {
+                melody: document.getElementById('layer-melody').checked,
+                bass: document.getElementById('layer-bass').checked,
+                chords: document.getElementById('layer-chords').checked,
+                strings: document.getElementById('layer-strings').checked,
+                brass: document.getElementById('layer-brass').checked
+            };
+            
+            // Main loop - 8 cycles of 4 beats each
+            for (let cycle = 0; cycle < 8; cycle++) {
+                const cycleStart = time;
+                
+                // MELODY LAYER - Firebird chromatic theme
+                if (layerStates.melody) {
+                    const melodyNotes = [
+                        noteFrequencies.E5, noteFrequencies.Ds5, noteFrequencies.D5, 
+                        noteFrequencies.Cs5, noteFrequencies.C5, noteFrequencies.B4, 
+                        noteFrequencies.As4, noteFrequencies.A4
+                    ];
+                    const melodyTimes = [0.25, 0.25, 0.25, 0.25, 0.5, 0.25, 0.25, 0.5];
+                    
+                    let melodyTime = cycleStart;
+                    for (let i = 0; i < melodyNotes.length; i++) {
+                        createNote(
+                            melodyNotes[i], 
+                            startTime + beatToSeconds(melodyTime), 
+                            beatToSeconds(melodyTimes[i] * 0.8), 
+                            'triangle', 
+                            0.25
+                        );
+                        melodyTime += melodyTimes[i];
+                    }
+                    
+                    // Wild ornament flourishes
+                    const ornamentNotes = [
+                        noteFrequencies.Gs5, noteFrequencies.A5, noteFrequencies.As5, 
+                        noteFrequencies.B5, noteFrequencies.A5
+                    ];
+                    for (let i = 0; i < 5; i++) {
+                        createNote(
+                            ornamentNotes[i], 
+                            startTime + beatToSeconds(melodyTime + i * 0.125), 
+                            beatToSeconds(0.1), 
+                            'square', 
+                            0.15
+                        );
+                    }
+                }
+                
+                // BASS LAYER - Ostinato pattern
+                if (layerStates.bass) {
+                    const bassRoots = [noteFrequencies.E2, noteFrequencies.E2, noteFrequencies.F2, noteFrequencies.Fs2];
+                    const bassRoot = bassRoots[cycle % 4];
+                    
+                    for (let i = 0; i < 4; i++) {
+                        const bassTime = cycleStart + i * 1;
+                        createNote(bassRoot, startTime + beatToSeconds(bassTime), beatToSeconds(0.4), 'sawtooth', 0.35);
+                        createNote(bassRoot * 1.5, startTime + beatToSeconds(bassTime + 0.5), beatToSeconds(0.4), 'sawtooth', 0.3);
+                    }
+                }
+                
+                // CHORD LAYER - Staccato chords
+                if (layerStates.chords && cycle % 2 === 0) {
+                    const chordSequence = [
+                        [noteFrequencies.E4, noteFrequencies.G4, noteFrequencies.B4],
+                        [noteFrequencies.F4, noteFrequencies.A4, noteFrequencies.C5],
+                        [noteFrequencies.Fs4, noteFrequencies.As4, noteFrequencies.D5],
+                        [noteFrequencies.E4, noteFrequencies.Gs4, noteFrequencies.B4]
+                    ];
+                    
+                    chordSequence.forEach((chord, i) => {
+                        createChord(chord, startTime + beatToSeconds(cycleStart + i * 1), beatToSeconds(0.15), 'square', 0.18);
+                    });
+                }
+                
+                // STRING LAYER - Tremolos
+                if (layerStates.strings && cycle % 3 === 1) {
+                    const stringNote = cycle % 2 === 1 ? noteFrequencies.E4 : noteFrequencies.G4;
+                    for (let i = 0; i < 8; i++) {
+                        createNote(
+                            stringNote, 
+                            startTime + beatToSeconds(cycleStart + i * 0.125), 
+                            beatToSeconds(0.1), 
+                            'triangle', 
+                            0.15
+                        );
+                    }
+                }
+                
+                // BRASS LAYER - Fanfare calls
+                if (layerStates.brass && cycle % 4 === 3) {
+                    const brassNotes = [noteFrequencies.C5, noteFrequencies.E5, noteFrequencies.G5, noteFrequencies.C6];
+                    brassNotes.forEach((note, i) => {
+                        createNote(
+                            note, 
+                            startTime + beatToSeconds(cycleStart + i * 0.5), 
+                            beatToSeconds(0.4), 
+                            'sawtooth', 
+                            0.22
+                        );
+                    });
+                }
+                
+                time += 4; // Each cycle is 4 beats
+            }
+            
+            // Schedule playback completion
+            const totalDuration = beatToSeconds(time) * 1000;
+            setTimeout(() => {
+                if (isPlaying) {
+                    stopPlayback();
+                    setStatus('Playback complete. Click Play to repeat.', 'success');
+                    document.getElementById('playBtn').disabled = false;
+                    document.getElementById('tempo').disabled = false;
+                    document.getElementById('volume').disabled = false;
+                }
+            }, totalDuration + 1000);
+        }
+
+        function stopPlayback() {
+            isPlaying = false;
+            
+            // Stop all scheduled oscillators
+            scheduledNodes.forEach(({ osc, gainNode }) => {
+                try {
+                    osc.stop();
+                    osc.disconnect();
+                    gainNode.disconnect();
+                } catch (e) {
+                    // Already stopped
+                }
+            });
+            scheduledNodes = [];
+            
+            // Close audio context
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            document.getElementById('playBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('tempo').disabled = false;
+            document.getElementById('volume').disabled = false;
+            
+            setStatus('Playback stopped', 'success');
+        }
+
+        // Tempo slider update
+        document.getElementById('tempo').addEventListener('input', (e) => {
+            document.getElementById('tempoValue').textContent = e.target.value;
+        });
+
+        // Volume slider update
+        document.getElementById('volume').addEventListener('input', (e) => {
+            document.getElementById('volumeValue').textContent = e.target.value;
+        });
+    </script>
+</body>
+</html>

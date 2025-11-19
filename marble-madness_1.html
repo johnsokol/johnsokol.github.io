@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Marble Madness - Tilt Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            background: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            border: 3px solid #16213e;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            background: #0f3460;
+            touch-action: none;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+
+        .info-box {
+            background: rgba(22, 33, 62, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e94560;
+            backdrop-filter: blur(10px);
+        }
+
+        .info-item {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .info-label {
+            color: #aaa;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #e94560;
+        }
+
+        #startButton {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #e94560 0%, #c02040 100%);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 8px 32px rgba(233, 69, 96, 0.5);
+            pointer-events: auto;
+            z-index: 100;
+        }
+
+        #startButton:active {
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(22, 33, 62, 0.95);
+            padding: 30px 50px;
+            border-radius: 20px;
+            border: 3px solid #e94560;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            display: none;
+            z-index: 99;
+        }
+
+        .restart-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(22, 33, 62, 0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        #timer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 72px;
+            font-weight: bold;
+            color: #e94560;
+            text-shadow: 0 0 20px rgba(233, 69, 96, 0.8);
+            pointer-events: none;
+            opacity: 0.3;
+        }
+
+        #timer.warning {
+            color: #f59e0b;
+            animation: pulse 0.5s infinite;
+        }
+
+        #timer.critical {
+            color: #ef4444;
+            animation: pulse 0.3s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        .error-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(26, 26, 46, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        .error-content {
+            background: #16213e;
+            padding: 40px;
+            border-radius: 20px;
+            border: 3px solid #ef4444;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .error-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .error-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ef4444;
+            margin-bottom: 15px;
+        }
+
+        .error-message {
+            font-size: 16px;
+            color: #aaa;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .sound-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(22, 33, 62, 0.9);
+            border: 2px solid #e94560;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            pointer-events: auto;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div class="info-box">
+            <div class="info-item">
+                <div class="info-label">Level</div>
+                <div class="info-value" id="level">1</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Time Left</div>
+                <div class="info-value" id="time">30.0s</div>
+            </div>
+        </div>
+        <div class="info-box">
+            <div class="info-item">
+                <div class="info-label">Tilt X/Y</div>
+                <div class="info-value" id="tilt" style="font-size: 14px;">0 / 0</div>
+            </div>
+        </div>
+    </div>
+
+    <button class="sound-toggle" id="soundToggle">🔊</button>
+    <div id="timer">30</div>
+
+    <button id="startButton">Start Game</button>
+    <div id="message"></div>
+    <div class="restart-hint">Lay phone flat (face up) to restart level</div>
+
+    <div class="error-screen" id="errorScreen">
+        <div class="error-content">
+            <div class="error-icon">⚠️</div>
+            <div class="error-title">Accelerometer Not Available</div>
+            <div class="error-message">
+                This game requires motion sensors to work. Please:
+                <br><br>
+                • Make sure you're on a mobile device
+                <br>
+                • Check that sensor permissions are enabled
+                <br>
+                • Try using Chrome or Safari browser
+                <br><br>
+                Your device or browser may not support motion sensors.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startButton = document.getElementById('startButton');
+        const messageDiv = document.getElementById('message');
+        const timerDisplay = document.getElementById('timer');
+        const errorScreen = document.getElementById('errorScreen');
+        const soundToggle = document.getElementById('soundToggle');
+
+        // Audio context
+        let audioContext;
+        let backgroundMusic;
+        let soundEnabled = true;
+
+        // Initialize audio
+        function initAudio() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        // Sound toggle
+        soundToggle.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
+            if (soundEnabled && backgroundMusic && gameState.running) {
+                playBackgroundMusic();
+            } else if (!soundEnabled && backgroundMusic) {
+                stopBackgroundMusic();
+            }
+        });
+
+        // Sound effects
+        function playSound(type) {
+            if (!soundEnabled || !audioContext) return;
+
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            switch(type) {
+                case 'bounce':
+                    oscillator.frequency.value = 200;
+                    oscillator.type = 'square';
+                    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.1);
+                    break;
+                
+                case 'hole':
+                    oscillator.frequency.value = 400;
+                    oscillator.type = 'sawtooth';
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                    oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.5);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                    break;
+                
+                case 'complete':
+                    // Victory jingle
+                    const notes = [523.25, 659.25, 783.99]; // C, E, G
+                    notes.forEach((freq, i) => {
+                        const osc = audioContext.createOscillator();
+                        const gain = audioContext.createGain();
+                        osc.connect(gain);
+                        gain.connect(audioContext.destination);
+                        osc.frequency.value = freq;
+                        osc.type = 'sine';
+                        gain.gain.setValueAtTime(0.15, audioContext.currentTime + i * 0.15);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.15 + 0.3);
+                        osc.start(audioContext.currentTime + i * 0.15);
+                        osc.stop(audioContext.currentTime + i * 0.15 + 0.3);
+                    });
+                    return; // Don't use the main oscillator
+                
+                case 'timeout':
+                    oscillator.frequency.value = 100;
+                    oscillator.type = 'sawtooth';
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 1);
+                    break;
+
+                case 'tick':
+                    oscillator.frequency.value = 800;
+                    oscillator.type = 'sine';
+                    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.05);
+                    break;
+            }
+        }
+
+        // Background music
+        function playBackgroundMusic() {
+            if (!soundEnabled || !audioContext) return;
+            
+            stopBackgroundMusic(); // Stop any existing music
+
+            const notes = [
+                { freq: 523.25, duration: 0.2 }, // C
+                { freq: 587.33, duration: 0.2 }, // D
+                { freq: 659.25, duration: 0.2 }, // E
+                { freq: 587.33, duration: 0.2 }, // D
+                { freq: 523.25, duration: 0.2 }, // C
+                { freq: 392.00, duration: 0.2 }, // G
+                { freq: 440.00, duration: 0.2 }, // A
+                { freq: 392.00, duration: 0.4 }, // G
+            ];
+
+            let time = audioContext.currentTime;
+            const loopDuration = notes.reduce((sum, note) => sum + note.duration, 0);
+
+            function scheduleNotes(startTime) {
+                let t = startTime;
+                notes.forEach(note => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    
+                    osc.frequency.value = note.freq;
+                    osc.type = 'triangle';
+                    gain.gain.setValueAtTime(0.05, t);
+                    gain.gain.setValueAtTime(0.05, t + note.duration - 0.05);
+                    gain.gain.linearRampToValueAtTime(0, t + note.duration);
+                    
+                    osc.start(t);
+                    osc.stop(t + note.duration);
+                    t += note.duration;
+                });
+                return t;
+            }
+
+            backgroundMusic = {
+                stop: false,
+                nextLoop: scheduleNotes(time)
+            };
+
+            function loop() {
+                if (backgroundMusic && !backgroundMusic.stop && soundEnabled) {
+                    const now = audioContext.currentTime;
+                    if (now >= backgroundMusic.nextLoop - loopDuration) {
+                        backgroundMusic.nextLoop = scheduleNotes(backgroundMusic.nextLoop);
+                    }
+                    setTimeout(loop, 100);
+                }
+            }
+            loop();
+        }
+
+        function stopBackgroundMusic() {
+            if (backgroundMusic) {
+                backgroundMusic.stop = true;
+                backgroundMusic = null;
+            }
+        }
+
+        // Set canvas size
+        function resizeCanvas() {
+            const maxWidth = Math.min(window.innerWidth - 40, 600);
+            const maxHeight = Math.min(window.innerHeight - 200, 800);
+            canvas.width = maxWidth;
+            canvas.height = maxHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Game state
+        let gameState = {
+            running: false,
+            level: 1,
+            timeLimit: 30,
+            timeRemaining: 30,
+            lastTickTime: 0,
+            marble: { x: 0, y: 0, vx: 0, vy: 0, radius: 15 },
+            accel: { x: 0, y: 0, z: 0 },
+            permissionGranted: false,
+            lastBounceTime: 0,
+            sensorActive: false,
+            sensorCheckTimeout: null
+        };
+
+        // Level definitions
+        const levels = [
+            {
+                name: "Easy Start",
+                timeLimit: 30,
+                start: { x: 50, y: 50 },
+                goal: { x: 550, y: 750 },
+                walls: [
+                    { x: 0, y: 200, width: 400, height: 20 },
+                    { x: 200, y: 400, width: 400, height: 20 },
+                    { x: 0, y: 600, width: 400, height: 20 }
+                ],
+                holes: [
+                    { x: 300, y: 300, radius: 30 },
+                    { x: 450, y: 500, radius: 30 }
+                ]
+            },
+            {
+                name: "The Maze",
+                timeLimit: 45,
+                start: { x: 50, y: 50 },
+                goal: { x: 550, y: 750 },
+                walls: [
+                    { x: 0, y: 150, width: 500, height: 20 },
+                    { x: 100, y: 300, width: 500, height: 20 },
+                    { x: 0, y: 450, width: 500, height: 20 },
+                    { x: 100, y: 600, width: 500, height: 20 }
+                ],
+                holes: [
+                    { x: 250, y: 225, radius: 25 },
+                    { x: 350, y: 375, radius: 25 },
+                    { x: 250, y: 525, radius: 25 },
+                    { x: 450, y: 675, radius: 25 }
+                ]
+            },
+            {
+                name: "Challenge",
+                timeLimit: 60,
+                start: { x: 50, y: 400 },
+                goal: { x: 550, y: 400 },
+                walls: [
+                    { x: 150, y: 0, width: 20, height: 300 },
+                    { x: 300, y: 150, width: 20, height: 300 },
+                    { x: 450, y: 0, width: 20, height: 300 },
+                    { x: 150, y: 500, width: 20, height: 300 },
+                    { x: 300, y: 350, width: 20, height: 300 },
+                    { x: 450, y: 500, width: 20, height: 300 }
+                ],
+                holes: [
+                    { x: 225, y: 350, radius: 25 },
+                    { x: 225, y: 450, radius: 25 },
+                    { x: 375, y: 250, radius: 25 },
+                    { x: 375, y: 550, radius: 25 }
+                ]
+            }
+        ];
+
+        function getCurrentLevel() {
+            return levels[(gameState.level - 1) % levels.length];
+        }
+
+        // Check if device has accelerometer
+        function checkAccelerometer() {
+            return new Promise((resolve) => {
+                if (!window.DeviceMotionEvent) {
+                    resolve(false);
+                    return;
+                }
+
+                let hasAccel = false;
+                const timeout = setTimeout(() => {
+                    window.removeEventListener('devicemotion', checkHandler);
+                    resolve(hasAccel);
+                }, 2000);
+
+                function checkHandler(event) {
+                    if (event.accelerationIncludingGravity && 
+                        (event.accelerationIncludingGravity.x !== null || 
+                         event.accelerationIncludingGravity.y !== null)) {
+                        hasAccel = true;
+                        clearTimeout(timeout);
+                        window.removeEventListener('devicemotion', checkHandler);
+                        resolve(true);
+                    }
+                }
+
+                window.addEventListener('devicemotion', checkHandler);
+            });
+        }
+
+        // Request permission and start
+        startButton.addEventListener('click', async () => {
+            initAudio();
+
+            // Check for accelerometer support
+            const hasAccel = await checkAccelerometer();
+            if (!hasAccel) {
+                showError();
+                return;
+            }
+
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                try {
+                    const permissionState = await DeviceMotionEvent.requestPermission();
+                    if (permissionState === 'granted') {
+                        gameState.permissionGranted = true;
+                        startGame();
+                    } else {
+                        showError();
+                    }
+                } catch (error) {
+                    console.error('Permission error:', error);
+                    showError();
+                }
+            } else {
+                gameState.permissionGranted = true;
+                startGame();
+            }
+        });
+
+        function showError() {
+            errorScreen.style.display = 'flex';
+            startButton.style.display = 'none';
+        }
+
+        function startGame() {
+            startButton.style.display = 'none';
+            window.addEventListener('devicemotion', handleMotion);
+            
+            // Set up sensor activity check
+            gameState.sensorCheckTimeout = setTimeout(() => {
+                if (!gameState.sensorActive) {
+                    showError();
+                    gameState.running = false;
+                }
+            }, 3000);
+
+            initLevel();
+            gameState.running = true;
+            playBackgroundMusic();
+            gameLoop();
+        }
+
+        function initLevel() {
+            const level = getCurrentLevel();
+            gameState.marble.x = level.start.x;
+            gameState.marble.y = level.start.y;
+            gameState.marble.vx = 0;
+            gameState.marble.vy = 0;
+            gameState.timeLimit = level.timeLimit;
+            gameState.timeRemaining = level.timeLimit;
+            gameState.lastTickTime = Date.now();
+            document.getElementById('level').textContent = gameState.level;
+            updateTimerDisplay();
+        }
+
+        function handleMotion(event) {
+            const accel = event.accelerationIncludingGravity;
+            if (accel && (accel.x !== null || accel.y !== null)) {
+                gameState.sensorActive = true;
+                
+                // Clear the sensor check timeout once we know sensors work
+                if (gameState.sensorCheckTimeout) {
+                    clearTimeout(gameState.sensorCheckTimeout);
+                    gameState.sensorCheckTimeout = null;
+                }
+
+                // X and Y for movement, Z for restart detection
+                gameState.accel.x = accel.x || 0;
+                gameState.accel.y = accel.y || 0;
+                gameState.accel.z = accel.z || 0;
+
+                // Update UI
+                document.getElementById('tilt').textContent = 
+                    `${gameState.accel.x.toFixed(1)} / ${gameState.accel.y.toFixed(1)}`;
+
+                // Check for restart condition (phone laid flat, Z near 0)
+                if (Math.abs(gameState.accel.z) < 2 && gameState.running) {
+                    restartLevel();
+                }
+            }
+        }
+
+        function restartLevel() {
+            showMessage('🔄 Restarting Level!', 1000);
+            initLevel();
+        }
+
+        function showMessage(text, duration = 2000) {
+            messageDiv.textContent = text;
+            messageDiv.style.display = 'block';
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, duration);
+        }
+
+        function updateTimer() {
+            const now = Date.now();
+            const elapsed = (now - gameState.lastTickTime) / 1000;
+            gameState.lastTickTime = now;
+            
+            gameState.timeRemaining -= elapsed;
+
+            // Tick sound every second when time is running low
+            if (gameState.timeRemaining <= 10 && gameState.timeRemaining > 0) {
+                const seconds = Math.floor(gameState.timeRemaining);
+                const prevSeconds = Math.floor(gameState.timeRemaining + elapsed);
+                if (seconds !== prevSeconds) {
+                    playSound('tick');
+                }
+            }
+
+            if (gameState.timeRemaining <= 0) {
+                gameState.timeRemaining = 0;
+                gameState.running = false;
+                playSound('timeout');
+                showMessage('⏰ Time\'s Up!', 2000);
+                setTimeout(() => {
+                    initLevel();
+                    gameState.running = true;
+                }, 2000);
+            }
+
+            updateTimerDisplay();
+        }
+
+        function updateTimerDisplay() {
+            const time = Math.max(0, gameState.timeRemaining);
+            document.getElementById('time').textContent = time.toFixed(1) + 's';
+            timerDisplay.textContent = Math.ceil(time);
+
+            // Visual warnings
+            timerDisplay.classList.remove('warning', 'critical');
+            if (time <= 5) {
+                timerDisplay.classList.add('critical');
+            } else if (time <= 10) {
+                timerDisplay.classList.add('warning');
+            }
+        }
+
+        function updatePhysics() {
+            const marble = gameState.marble;
+            
+            // Apply acceleration (inverted for natural feel)
+            const sensitivity = 0.3;
+            marble.vx += -gameState.accel.x * sensitivity;
+            marble.vy += gameState.accel.y * sensitivity;
+
+            // Friction
+            marble.vx *= 0.98;
+            marble.vy *= 0.98;
+
+            // Speed limit
+            const maxSpeed = 15;
+            const speed = Math.sqrt(marble.vx * marble.vx + marble.vy * marble.vy);
+            if (speed > maxSpeed) {
+                marble.vx = (marble.vx / speed) * maxSpeed;
+                marble.vy = (marble.vy / speed) * maxSpeed;
+            }
+
+            // Update position
+            marble.x += marble.vx;
+            marble.y += marble.vy;
+
+            // Canvas boundaries with bounce
+            const now = Date.now();
+            if (marble.x - marble.radius < 0) {
+                marble.x = marble.radius;
+                marble.vx = -marble.vx * 0.7;
+                if (now - gameState.lastBounceTime > 100) {
+                    playSound('bounce');
+                    gameState.lastBounceTime = now;
+                }
+            }
+            if (marble.x + marble.radius > canvas.width) {
+                marble.x = canvas.width - marble.radius;
+                marble.vx = -marble.vx * 0.7;
+                if (now - gameState.lastBounceTime > 100) {
+                    playSound('bounce');
+                    gameState.lastBounceTime = now;
+                }
+            }
+            if (marble.y - marble.radius < 0) {
+                marble.y = marble.radius;
+                marble.vy = -marble.vy * 0.7;
+                if (now - gameState.lastBounceTime > 100) {
+                    playSound('bounce');
+                    gameState.lastBounceTime = now;
+                }
+            }
+            if (marble.y + marble.radius > canvas.height) {
+                marble.y = canvas.height - marble.radius;
+                marble.vy = -marble.vy * 0.7;
+                if (now - gameState.lastBounceTime > 100) {
+                    playSound('bounce');
+                    gameState.lastBounceTime = now;
+                }
+            }
+        }
+
+        function checkCollisions() {
+            const level = getCurrentLevel();
+            const marble = gameState.marble;
+            const now = Date.now();
+
+            // Check walls
+            level.walls.forEach(wall => {
+                // Scale walls to canvas size
+                const scaledWall = {
+                    x: wall.x * canvas.width / 600,
+                    y: wall.y * canvas.height / 800,
+                    width: wall.width * canvas.width / 600,
+                    height: wall.height * canvas.height / 800
+                };
+
+                if (circleRectCollision(marble, scaledWall)) {
+                    // Bounce off wall
+                    const centerX = marble.x;
+                    const centerY = marble.y;
+                    const rectCenterX = scaledWall.x + scaledWall.width / 2;
+                    const rectCenterY = scaledWall.y + scaledWall.height / 2;
+
+                    const dx = centerX - rectCenterX;
+                    const dy = centerY - rectCenterY;
+
+                    if (Math.abs(dx / scaledWall.width) > Math.abs(dy / scaledWall.height)) {
+                        marble.vx = -marble.vx * 0.5;
+                        marble.x += marble.vx;
+                    } else {
+                        marble.vy = -marble.vy * 0.5;
+                        marble.y += marble.vy;
+                    }
+
+                    if (now - gameState.lastBounceTime > 100) {
+                        playSound('bounce');
+                        gameState.lastBounceTime = now;
+                    }
+                }
+            });
+
+            // Check holes
+            level.holes.forEach(hole => {
+                const scaledHole = {
+                    x: hole.x * canvas.width / 600,
+                    y: hole.y * canvas.height / 800,
+                    radius: hole.radius * Math.min(canvas.width / 600, canvas.height / 800)
+                };
+
+                const dx = marble.x - scaledHole.x;
+                const dy = marble.y - scaledHole.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < scaledHole.radius) {
+                    playSound('hole');
+                    showMessage('💀 Fell in a hole!', 1500);
+                    setTimeout(() => {
+                        if (gameState.running) {
+                            initLevel();
+                        }
+                    }, 1500);
+                    gameState.running = false;
+                }
+            });
+
+            // Check goal
+            const scaledGoal = {
+                x: level.goal.x * canvas.width / 600,
+                y: level.goal.y * canvas.height / 800,
+                radius: 25 * Math.min(canvas.width / 600, canvas.height / 800)
+            };
+
+            const dx = marble.x - scaledGoal.x;
+            const dy = marble.y - scaledGoal.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < scaledGoal.radius + marble.radius) {
+                gameState.level++;
+                playSound('complete');
+                showMessage('🎉 Level Complete!', 1500);
+                setTimeout(() => {
+                    if (gameState.running) {
+                        initLevel();
+                    }
+                }, 1500);
+                gameState.running = false;
+                setTimeout(() => {
+                    gameState.running = true;
+                }, 1500);
+            }
+        }
+
+        function circleRectCollision(circle, rect) {
+            const closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.width));
+            const closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.height));
+            const dx = circle.x - closestX;
+            const dy = circle.y - closestY;
+            return (dx * dx + dy * dy) < (circle.radius * circle.radius);
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#0f3460';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const level = getCurrentLevel();
+
+            // Draw walls
+            ctx.fillStyle = '#16213e';
+            ctx.strokeStyle = '#e94560';
+            ctx.lineWidth = 2;
+            level.walls.forEach(wall => {
+                const x = wall.x * canvas.width / 600;
+                const y = wall.y * canvas.height / 800;
+                const width = wall.width * canvas.width / 600;
+                const height = wall.height * canvas.height / 800;
+                ctx.fillRect(x, y, width, height);
+                ctx.strokeRect(x, y, width, height);
+            });
+
+            // Draw holes
+            level.holes.forEach(hole => {
+                const x = hole.x * canvas.width / 600;
+                const y = hole.y * canvas.height / 800;
+                const radius = hole.radius * Math.min(canvas.width / 600, canvas.height / 800);
+                
+                // Gradient for 3D effect
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                gradient.addColorStop(0, '#000');
+                gradient.addColorStop(0.7, '#1a1a2e');
+                gradient.addColorStop(1, '#0f3460');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw goal
+            const goalX = level.goal.x * canvas.width / 600;
+            const goalY = level.goal.y * canvas.height / 800;
+            const goalRadius = 25 * Math.min(canvas.width / 600, canvas.height / 800);
+            
+            const goalGradient = ctx.createRadialGradient(goalX, goalY, 0, goalX, goalY, goalRadius);
+            goalGradient.addColorStop(0, '#4ecca3');
+            goalGradient.addColorStop(1, '#2ecc71');
+            
+            ctx.fillStyle = goalGradient;
+            ctx.beginPath();
+            ctx.arc(goalX, goalY, goalRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Draw marble with 3D effect
+            const marble = gameState.marble;
+            
+            // Shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.arc(marble.x + 3, marble.y + 3, marble.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Marble gradient
+            const marbleGradient = ctx.createRadialGradient(
+                marble.x - marble.radius * 0.3, 
+                marble.y - marble.radius * 0.3, 
+                marble.radius * 0.1,
+                marble.x, 
+                marble.y, 
+                marble.radius
+            );
+            marbleGradient.addColorStop(0, '#ff6b9d');
+            marbleGradient.addColorStop(0.5, '#e94560');
+            marbleGradient.addColorStop(1, '#c02040');
+
+            ctx.fillStyle = marbleGradient;
+            ctx.beginPath();
+            ctx.arc(marble.x, marble.y, marble.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Marble highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.beginPath();
+            ctx.arc(marble.x - marble.radius * 0.3, marble.y - marble.radius * 0.3, marble.radius * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function gameLoop() {
+            if (gameState.running) {
+                updateTimer();
+                updatePhysics();
+                checkCollisions();
+                draw();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+    </script>
+</body>
+</html>

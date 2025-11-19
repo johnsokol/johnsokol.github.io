@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filtered DnB - Sonic Pi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+        
+        .container {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            max-width: 600px;
+            width: 100%;
+            border: 2px solid rgba(100, 255, 100, 0.3);
+        }
+        
+        h1 {
+            color: #00ff88;
+            margin-bottom: 10px;
+            font-size: 36px;
+            text-align: center;
+            text-shadow: 0 0 20px #00ff88;
+        }
+        
+        .artist {
+            text-align: center;
+            color: #aaa;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+            min-width: 120px;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 255, 136, 0.4);
+        }
+        
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .filter-display {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border: 2px solid rgba(0, 255, 136, 0.3);
+        }
+        
+        .filter-label {
+            text-align: center;
+            font-size: 14px;
+            color: #00ff88;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .cutoff-value {
+            text-align: center;
+            font-size: 48px;
+            font-weight: bold;
+            color: #00ff88;
+            text-shadow: 0 0 30px #00ff88;
+            margin-bottom: 10px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .cutoff-bar {
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+        
+        .cutoff-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00cc66);
+            border-radius: 10px;
+            transition: width 0.1s;
+            box-shadow: 0 0 20px #00ff88;
+        }
+        
+        .waveform {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 20px;
+            height: 150px;
+            margin-bottom: 20px;
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .info {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            border: 2px solid rgba(0, 255, 136, 0.3);
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .label {
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        .status {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 16px;
+            color: #00ff88;
+            min-height: 24px;
+        }
+        
+        .slide-time {
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ FILTERED DnB</h1>
+        <p class="artist">Coded by Sam Aaron</p>
+        
+        <div class="controls">
+            <button id="playBtn">▶ PLAY</button>
+            <button id="stopBtn" disabled>⏹ STOP</button>
+        </div>
+        
+        <div class="filter-display">
+            <div class="filter-label">Resonant Lowpass Filter</div>
+            <div class="cutoff-value" id="cutoffValue">10 Hz</div>
+            <div class="slide-time" id="slideTime">Slide: 4.0s</div>
+            <div class="cutoff-bar">
+                <div class="cutoff-fill" id="cutoffFill" style="width: 8.3%"></div>
+            </div>
+        </div>
+        
+        <div class="waveform">
+            <canvas id="waveform"></canvas>
+        </div>
+        
+        <div class="info">
+            <div class="info-row">
+                <span class="label">Sample:</span>
+                <span>Amen Break + DnB Bass</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Filter Type:</span>
+                <span>Resonant Lowpass (RLPF)</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Cutoff Range:</span>
+                <span>40-120 Hz (randomized)</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Loop BPM:</span>
+                <span>~170 (Amen Break)</span>
+            </div>
+        </div>
+        
+        <div class="status" id="status"></div>
+    </div>
+
+    <script>
+        let audioContext;
+        let isPlaying = false;
+        let masterGain;
+        let filter;
+        let analyser;
+        let loopTimeout;
+        let currentCutoff = 10;
+        let targetCutoff = 10;
+        let cutoffSlideTime = 4;
+        let animationFrame;
+        
+        // Canvas for waveform
+        const canvas = document.getElementById('waveform');
+        const canvasCtx = canvas.getContext('2d');
+        
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        resizeCanvas();
+        
+        // Create the iconic Amen Break drum pattern
+        function createAmenBreak(ctx, startTime, duration, amp) {
+            const sixteenth = duration / 16;
+            
+            // Beat 1: Kick + crash
+            playKick(ctx, startTime, amp);
+            playHiHat(ctx, startTime, amp * 0.5);
+            
+            // Beat 1.5: Hi-hat
+            playHiHat(ctx, startTime + sixteenth * 2, amp * 0.3);
+            
+            // Beat 2: Snare (backbeat)
+            playSnare(ctx, startTime + sixteenth * 4, amp * 0.9);
+            playHiHat(ctx, startTime + sixteenth * 4, amp * 0.4);
+            
+            // Beat 2.5: Ghost snare + hi-hat
+            playSnare(ctx, startTime + sixteenth * 6, amp * 0.25);
+            playHiHat(ctx, startTime + sixteenth * 6, amp * 0.3);
+            
+            // Beat 3: Kick
+            playKick(ctx, startTime + sixteenth * 8, amp * 0.9);
+            playHiHat(ctx, startTime + sixteenth * 8, amp * 0.4);
+            
+            // Beat 3.25: Quick kick (the famous fill starts)
+            playKick(ctx, startTime + sixteenth * 9, amp * 0.7);
+            
+            // Beat 3.5: Snare
+            playSnare(ctx, startTime + sixteenth * 10, amp * 0.8);
+            playHiHat(ctx, startTime + sixteenth * 10, amp * 0.35);
+            
+            // Beat 3.75: Kick (rapid alternation)
+            playKick(ctx, startTime + sixteenth * 11, amp * 0.75);
+            
+            // Beat 4: Snare (the iconic fill continues)
+            playSnare(ctx, startTime + sixteenth * 12, amp * 0.85);
+            playHiHat(ctx, startTime + sixteenth * 12, amp * 0.4);
+            
+            // Beat 4.25: Kick
+            playKick(ctx, startTime + sixteenth * 13, amp * 0.7);
+            
+            // Beat 4.5: Snare
+            playSnare(ctx, startTime + sixteenth * 14, amp * 0.8);
+            
+            // Beat 4.75: Light snare/ghost note leading back to 1
+            playSnare(ctx, startTime + sixteenth * 15, amp * 0.3);
+            playHiHat(ctx, startTime + sixteenth * 15, amp * 0.35);
+        }
+        
+        // Kick drum
+        function playKick(ctx, time, amp) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(150, time);
+            osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
+            
+            gain.gain.setValueAtTime(amp, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.4);
+            
+            osc.connect(gain);
+            gain.connect(filter);
+            
+            osc.start(time);
+            osc.stop(time + 0.4);
+        }
+        
+        // Snare
+        function playSnare(ctx, time, amp) {
+            // Noise component
+            const noise = ctx.createBufferSource();
+            const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.2, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < data.length; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            
+            noise.buffer = buffer;
+            
+            const noiseFilter = ctx.createBiquadFilter();
+            noiseFilter.type = 'highpass';
+            noiseFilter.frequency.setValueAtTime(2000, time);
+            
+            const noiseGain = ctx.createGain();
+            noiseGain.gain.setValueAtTime(amp, time);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+            
+            noise.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(filter);
+            
+            // Tone component
+            const osc = ctx.createOscillator();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(200, time);
+            osc.frequency.exponentialRampToValueAtTime(100, time + 0.1);
+            
+            const oscGain = ctx.createGain();
+            oscGain.gain.setValueAtTime(amp * 0.5, time);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+            
+            osc.connect(oscGain);
+            oscGain.connect(filter);
+            
+            noise.start(time);
+            noise.stop(time + 0.2);
+            osc.start(time);
+            osc.stop(time + 0.15);
+        }
+        
+        // Hi-hat
+        function playHiHat(ctx, time, amp) {
+            const noise = ctx.createBufferSource();
+            const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < data.length; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            
+            noise.buffer = buffer;
+            
+            const noiseFilter = ctx.createBiquadFilter();
+            noiseFilter.type = 'highpass';
+            noiseFilter.frequency.setValueAtTime(8000, time);
+            
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(amp, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.04);
+            
+            noise.connect(noiseFilter);
+            noiseFilter.connect(gain);
+            gain.connect(filter);
+            
+            noise.start(time);
+            noise.stop(time + 0.05);
+        }
+        
+        // DnB Bass
+        function playDnbBass(ctx, startTime, duration, amp) {
+            // Sub bass
+            const sub = ctx.createOscillator();
+            sub.type = 'sine';
+            sub.frequency.setValueAtTime(55, startTime); // A1
+            
+            // Mid bass (detuned saws)
+            const bass1 = ctx.createOscillator();
+            bass1.type = 'sawtooth';
+            bass1.frequency.setValueAtTime(55, startTime);
+            bass1.detune.setValueAtTime(-5, startTime);
+            
+            const bass2 = ctx.createOscillator();
+            bass2.type = 'sawtooth';
+            bass2.frequency.setValueAtTime(55, startTime);
+            bass2.detune.setValueAtTime(5, startTime);
+            
+            // Gain envelopes
+            const subGain = ctx.createGain();
+            subGain.gain.setValueAtTime(amp * 0.8, startTime);
+            subGain.gain.setValueAtTime(amp * 0.8, startTime + duration - 0.1);
+            subGain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            
+            const bassGain = ctx.createGain();
+            bassGain.gain.setValueAtTime(amp * 0.3, startTime);
+            bassGain.gain.setValueAtTime(amp * 0.3, startTime + duration - 0.1);
+            bassGain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            
+            sub.connect(subGain);
+            subGain.connect(filter);
+            
+            bass1.connect(bassGain);
+            bass2.connect(bassGain);
+            bassGain.connect(filter);
+            
+            sub.start(startTime);
+            bass1.start(startTime);
+            bass2.start(startTime);
+            
+            sub.stop(startTime + duration);
+            bass1.stop(startTime + duration);
+            bass2.stop(startTime + duration);
+        }
+        
+        // Random range helper
+        function rrand(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+        
+        // Update filter cutoff display
+        function updateCutoffDisplay() {
+            const cutoffHz = Math.round(currentCutoff);
+            document.getElementById('cutoffValue').textContent = `${cutoffHz} Hz`;
+            
+            // Update bar (10 to 120 range)
+            const percent = ((currentCutoff - 10) / (120 - 10)) * 100;
+            document.getElementById('cutoffFill').style.width = `${Math.max(0, Math.min(100, percent))}%`;
+        }
+        
+        // Animate filter cutoff
+        function animateCutoff() {
+            if (!isPlaying) return;
+            
+            // Smoothly interpolate towards target
+            const diff = targetCutoff - currentCutoff;
+            const speed = Math.abs(diff) / (cutoffSlideTime * 60); // Approximate 60fps
+            
+            if (Math.abs(diff) > 0.1) {
+                currentCutoff += Math.sign(diff) * Math.min(Math.abs(diff), speed);
+                filter.frequency.setValueAtTime(currentCutoff, audioContext.currentTime);
+                updateCutoffDisplay();
+            }
+            
+            animationFrame = requestAnimationFrame(animateCutoff);
+        }
+        
+        // Draw waveform
+        function drawWaveform() {
+            if (!isPlaying || !analyser) return;
+            
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteTimeDomainData(dataArray);
+            
+            canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            canvasCtx.lineWidth = 2;
+            canvasCtx.strokeStyle = '#00ff88';
+            canvasCtx.shadowBlur = 10;
+            canvasCtx.shadowColor = '#00ff88';
+            
+            canvasCtx.beginPath();
+            
+            const sliceWidth = canvas.width / bufferLength;
+            let x = 0;
+            
+            for (let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * canvas.height / 2;
+                
+                if (i === 0) {
+                    canvasCtx.moveTo(x, y);
+                } else {
+                    canvasCtx.lineTo(x, y);
+                }
+                
+                x += sliceWidth;
+            }
+            
+            canvasCtx.lineTo(canvas.width, canvas.height / 2);
+            canvasCtx.stroke();
+            
+            requestAnimationFrame(drawWaveform);
+        }
+        
+        // Main DNB loop
+        function dnbLoop() {
+            if (!isPlaying) return;
+            
+            const currentTime = audioContext.currentTime;
+            const loopDuration = 1.0; // 1 beat at Amen Break BPM
+            
+            // Play bass
+            playDnbBass(audioContext, currentTime, loopDuration, 5);
+            
+            // Play Amen Break
+            createAmenBreak(audioContext, currentTime, loopDuration, 5);
+            
+            // Update filter parameters
+            targetCutoff = rrand(40, 120);
+            cutoffSlideTime = rrand(1, 4);
+            
+            document.getElementById('slideTime').textContent = `Slide: ${cutoffSlideTime.toFixed(1)}s`;
+            
+            // Schedule next iteration
+            loopTimeout = setTimeout(dnbLoop, loopDuration * 1000);
+        }
+        
+        // Start playback
+        function startPlayback() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            // Create master gain
+            masterGain = audioContext.createGain();
+            masterGain.gain.setValueAtTime(0.5, audioContext.currentTime);
+            
+            // Create resonant lowpass filter
+            filter = audioContext.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(10, audioContext.currentTime);
+            filter.Q.setValueAtTime(15, audioContext.currentTime); // High resonance
+            
+            // Create analyser
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 2048;
+            
+            // Connect audio chain
+            filter.connect(masterGain);
+            masterGain.connect(analyser);
+            analyser.connect(audioContext.destination);
+            
+            // Reset values
+            currentCutoff = 10;
+            targetCutoff = 10;
+            cutoffSlideTime = 4;
+            
+            isPlaying = true;
+            
+            // Start loops
+            dnbLoop();
+            animateCutoff();
+            drawWaveform();
+            
+            // Update UI
+            document.getElementById('status').textContent = '♪ Playing...';
+            document.getElementById('playBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+        }
+        
+        // Stop playback
+        function stopPlayback() {
+            isPlaying = false;
+            
+            // Clear timeouts
+            if (loopTimeout) {
+                clearTimeout(loopTimeout);
+            }
+            
+            if (animationFrame) {
+                cancelAnimationFrame(animationFrame);
+            }
+            
+            // Fade out
+            if (masterGain) {
+                masterGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            }
+            
+            // Update UI
+            setTimeout(() => {
+                document.getElementById('status').textContent = '';
+                document.getElementById('playBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                
+                // Reset display
+                currentCutoff = 10;
+                updateCutoffDisplay();
+            }, 500);
+        }
+        
+        // Event listeners
+        document.getElementById('playBtn').addEventListener('click', startPlayback);
+        document.getElementById('stopBtn').addEventListener('click', stopPlayback);
+        
+        window.addEventListener('resize', resizeCanvas);
+    </script>
+</body>
+</html>

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GWBASIC PLAY Command Player</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #00ff00;
+        }
+        h1 {
+            text-align: center;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+        .container {
+            background: #000;
+            border: 2px solid #00ff00;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            background: #0a0a0a;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            border-radius: 3px;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        button:disabled {
+            background: #006600;
+            cursor: not-allowed;
+        }
+        .examples {
+            margin-top: 20px;
+            padding: 15px;
+            background: #0a0a0a;
+            border: 1px solid #006600;
+            border-radius: 3px;
+        }
+        .examples h3 {
+            margin-top: 0;
+            color: #00ff00;
+        }
+        .example {
+            margin: 10px 0;
+            cursor: pointer;
+            padding: 5px;
+        }
+        .example:hover {
+            background: #1a1a1a;
+        }
+        .example code {
+            color: #00ff00;
+        }
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #0a0a0a;
+            border: 1px solid #006600;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>♪ GWBASIC PLAY Command Player ♪</h1>
+    
+    <div class="container">
+        <label for="playString">Enter PLAY Command String:</label>
+        <input type="text" id="playString" value="T120 O4 L4 C D E F G A B O5 C" placeholder="T120 O4 L4 C D E F G">
+        <button id="playBtn">▶ PLAY</button>
+        <button id="stopBtn">⏹ STOP</button>
+        
+        <div class="examples">
+            <h3>Examples (click to load):</h3>
+            <div class="example" data-play="T120 O4 L4 C D E F G A B O5 C">
+                <strong>Scale:</strong> <code>T120 O4 L4 C D E F G A B O5 C</code>
+            </div>
+            <div class="example" data-play="T180 O4 L8 C C G G A A G2 F F E E D D C2">
+                <strong>Twinkle Twinkle:</strong> <code>T180 O4 L8 C C G G A A G2 F F E E D D C2</code>
+            </div>
+            <div class="example" data-play="T140 O4 L4 E E P E P C E P G2 P2 O3 G2 P2">
+                <strong>Mario Theme:</strong> <code>T140 O4 L4 E E P E P C E P G2 P2 O3 G2 P2</code>
+            </div>
+            <div class="example" data-play="T120 O4 L16 C C C L8 D L4 E L8 D L16 E F L2 G">
+                <strong>Mixed Durations:</strong> <code>T120 O4 L16 C C C L8 D L4 E L8 D L16 E F L2 G</code>
+            </div>
+            <div class="example" data-play="T200 O5 L16 C# D# F# G# A#4 P4 A# G# F# D# C#4">
+                <strong>Sharps:</strong> <code>T200 O5 L16 C# D# F# G# A#4 P4 A# G# F# D# C#4</code>
+            </div>
+        </div>
+
+        <div class="info">
+            <strong>Command Reference:</strong><br>
+            <strong>T</strong>nnn - Tempo (beats per minute, 32-255, default 120)<br>
+            <strong>O</strong>n - Octave (0-6, default 4, 4 is middle octave)<br>
+            <strong>L</strong>n - Default note Length (1=whole, 2=half, 4=quarter, 8=eighth, 16=sixteenth)<br>
+            <strong>A-G</strong> - Notes (can add # or + for sharp, - for flat)<br>
+            <strong>P</strong> - Pause/rest<br>
+            <strong>Number after note</strong> - Duration override (e.g., C8 = eighth note C)
+        </div>
+    </div>
+
+    <script>
+        class GWBasicPlayer {
+            constructor() {
+                this.audioContext = null;
+                this.tempo = 120;
+                this.octave = 4;
+                this.defaultLength = 4;
+                this.isPlaying = false;
+                this.scheduledNodes = [];
+            }
+
+            // Note frequencies for octave 4 (middle octave)
+            noteFrequencies = {
+                'C': 261.63,
+                'C#': 277.18,
+                'Db': 277.18,
+                'D': 293.66,
+                'D#': 311.13,
+                'Eb': 311.13,
+                'E': 329.63,
+                'F': 349.23,
+                'F#': 369.99,
+                'Gb': 369.99,
+                'G': 392.00,
+                'G#': 415.30,
+                'Ab': 415.30,
+                'A': 440.00,
+                'A#': 466.16,
+                'Bb': 466.16,
+                'B': 493.88
+            };
+
+            getFrequency(note, octave) {
+                const baseFreq = this.noteFrequencies[note];
+                if (!baseFreq) return 0;
+                // Adjust for octave (each octave doubles/halves frequency)
+                return baseFreq * Math.pow(2, octave - 4);
+            }
+
+            getDuration(length) {
+                // Calculate duration in seconds based on tempo and note length
+                // A quarter note at 120 BPM = 0.5 seconds
+                const quarterNoteDuration = 60 / this.tempo;
+                return (4 / length) * quarterNoteDuration;
+            }
+
+            parsePlayString(playString) {
+                const commands = [];
+                playString = playString.toUpperCase().replace(/\s+/g, '');
+                
+                let i = 0;
+                while (i < playString.length) {
+                    const char = playString[i];
+                    
+                    // Tempo
+                    if (char === 'T') {
+                        i++;
+                        let num = '';
+                        while (i < playString.length && /\d/.test(playString[i])) {
+                            num += playString[i++];
+                        }
+                        commands.push({ type: 'TEMPO', value: parseInt(num) || 120 });
+                    }
+                    // Octave
+                    else if (char === 'O') {
+                        i++;
+                        let num = '';
+                        while (i < playString.length && /\d/.test(playString[i])) {
+                            num += playString[i++];
+                        }
+                        commands.push({ type: 'OCTAVE', value: parseInt(num) || 4 });
+                    }
+                    // Default Length
+                    else if (char === 'L') {
+                        i++;
+                        let num = '';
+                        while (i < playString.length && /\d/.test(playString[i])) {
+                            num += playString[i++];
+                        }
+                        commands.push({ type: 'LENGTH', value: parseInt(num) || 4 });
+                    }
+                    // Pause
+                    else if (char === 'P') {
+                        i++;
+                        let num = '';
+                        while (i < playString.length && /\d/.test(playString[i])) {
+                            num += playString[i++];
+                        }
+                        commands.push({ type: 'PAUSE', length: num ? parseInt(num) : null });
+                    }
+                    // Notes
+                    else if (/[A-G]/.test(char)) {
+                        let note = char;
+                        i++;
+                        
+                        // Check for sharp or flat
+                        if (i < playString.length && (playString[i] === '#' || playString[i] === '+')) {
+                            note += '#';
+                            i++;
+                        } else if (i < playString.length && playString[i] === '-') {
+                            note += 'b';
+                            i++;
+                        }
+                        
+                        // Check for duration
+                        let num = '';
+                        while (i < playString.length && /\d/.test(playString[i])) {
+                            num += playString[i++];
+                        }
+                        
+                        commands.push({ 
+                            type: 'NOTE', 
+                            note: note, 
+                            length: num ? parseInt(num) : null 
+                        });
+                    }
+                    else {
+                        i++;
+                    }
+                }
+                
+                return commands;
+            }
+
+            async play(playString) {
+                if (this.isPlaying) {
+                    this.stop();
+                }
+
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                this.isPlaying = true;
+                this.scheduledNodes = [];
+
+                // Reset to defaults
+                this.tempo = 120;
+                this.octave = 4;
+                this.defaultLength = 4;
+
+                const commands = this.parsePlayString(playString);
+                let currentTime = this.audioContext.currentTime;
+
+                for (const cmd of commands) {
+                    if (!this.isPlaying) break;
+
+                    switch (cmd.type) {
+                        case 'TEMPO':
+                            this.tempo = cmd.value;
+                            break;
+                        
+                        case 'OCTAVE':
+                            this.octave = cmd.value;
+                            break;
+                        
+                        case 'LENGTH':
+                            this.defaultLength = cmd.value;
+                            break;
+                        
+                        case 'PAUSE':
+                            const pauseLength = cmd.length || this.defaultLength;
+                            currentTime += this.getDuration(pauseLength);
+                            break;
+                        
+                        case 'NOTE':
+                            const noteLength = cmd.length || this.defaultLength;
+                            const duration = this.getDuration(noteLength);
+                            const frequency = this.getFrequency(cmd.note, this.octave);
+                            
+                            if (frequency > 0) {
+                                // Create oscillator
+                                const oscillator = this.audioContext.createOscillator();
+                                const gainNode = this.audioContext.createGain();
+                                
+                                oscillator.type = 'square'; // Classic GWBASIC sound
+                                oscillator.frequency.value = frequency;
+                                
+                                // Envelope for smoother sound
+                                gainNode.gain.setValueAtTime(0, currentTime);
+                                gainNode.gain.linearRampToValueAtTime(0.3, currentTime + 0.01);
+                                gainNode.gain.linearRampToValueAtTime(0.3, currentTime + duration - 0.05);
+                                gainNode.gain.linearRampToValueAtTime(0, currentTime + duration);
+                                
+                                oscillator.connect(gainNode);
+                                gainNode.connect(this.audioContext.destination);
+                                
+                                oscillator.start(currentTime);
+                                oscillator.stop(currentTime + duration);
+                                
+                                this.scheduledNodes.push({ oscillator, gainNode });
+                            }
+                            
+                            currentTime += duration;
+                            break;
+                    }
+                }
+
+                // Schedule stop after all notes
+                setTimeout(() => {
+                    this.isPlaying = false;
+                    document.getElementById('playBtn').disabled = false;
+                    document.getElementById('stopBtn').disabled = true;
+                }, (currentTime - this.audioContext.currentTime) * 1000);
+            }
+
+            stop() {
+                this.isPlaying = false;
+                
+                // Stop all scheduled nodes
+                this.scheduledNodes.forEach(({ oscillator, gainNode }) => {
+                    try {
+                        oscillator.stop();
+                        oscillator.disconnect();
+                        gainNode.disconnect();
+                    } catch (e) {
+                        // Already stopped
+                    }
+                });
+                
+                this.scheduledNodes = [];
+                
+                if (this.audioContext) {
+                    this.audioContext.close();
+                    this.audioContext = null;
+                }
+
+                document.getElementById('playBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+            }
+        }
+
+        const player = new GWBasicPlayer();
+
+        document.getElementById('playBtn').addEventListener('click', () => {
+            const playString = document.getElementById('playString').value;
+            document.getElementById('playBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            player.play(playString);
+        });
+
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            player.stop();
+        });
+
+        // Load examples
+        document.querySelectorAll('.example').forEach(example => {
+            example.addEventListener('click', () => {
+                const playString = example.getAttribute('data-play');
+                document.getElementById('playString').value = playString;
+            });
+        });
+
+        // Allow Enter key to play
+        document.getElementById('playString').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('playBtn').click();
+            }
+        });
+
+        // Initial state
+        document.getElementById('stopBtn').disabled = true;
+    </script>
+</body>
+</html>

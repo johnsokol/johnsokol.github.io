@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phone Sensors Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+
+        .sensor-data {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .data-item {
+            background: #f7f7f7;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .data-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .data-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        .status.active {
+            background: #10b981;
+            color: white;
+        }
+
+        .status.inactive {
+            background: #ef4444;
+            color: white;
+        }
+
+        .status.warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .permission-note {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #92400e;
+        }
+
+        .vector-display {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+        }
+
+        .axis {
+            text-align: center;
+        }
+
+        .axis-label {
+            font-size: 14px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .axis-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 Phone Sensors Dashboard</h1>
+
+        <!-- Battery Info -->
+        <div class="card">
+            <h2>🔋 Battery Status</h2>
+            <div class="sensor-data">
+                <div class="data-item">
+                    <div class="data-label">Level</div>
+                    <div class="data-value" id="batteryLevel">--</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Charging</div>
+                    <div class="data-value" id="batteryCharging">--</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Time to Full</div>
+                    <div class="data-value" id="batteryTime">--</div>
+                </div>
+            </div>
+            <span class="status inactive" id="batteryStatus">Not Available</span>
+        </div>
+
+        <!-- Network Info -->
+        <div class="card">
+            <h2>📡 Network Information</h2>
+            <div class="sensor-data">
+                <div class="data-item">
+                    <div class="data-label">Connection Type</div>
+                    <div class="data-value" id="networkType">--</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Effective Type</div>
+                    <div class="data-value" id="networkEffective">--</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Downlink (Mbps)</div>
+                    <div class="data-value" id="networkDownlink">--</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">RTT (ms)</div>
+                    <div class="data-value" id="networkRTT">--</div>
+                </div>
+            </div>
+            <span class="status inactive" id="networkStatus">Not Available</span>
+        </div>
+
+        <!-- Accelerometer -->
+        <div class="card">
+            <h2>📊 Accelerometer</h2>
+            <div class="vector-display">
+                <div class="axis">
+                    <div class="axis-label">X</div>
+                    <div class="axis-value" id="accelX">0.0</div>
+                </div>
+                <div class="axis">
+                    <div class="axis-label">Y</div>
+                    <div class="axis-value" id="accelY">0.0</div>
+                </div>
+                <div class="axis">
+                    <div class="axis-label">Z</div>
+                    <div class="axis-value" id="accelZ">0.0</div>
+                </div>
+            </div>
+            <span class="status inactive" id="accelStatus">Not Active</span>
+            <button onclick="startAccelerometer()">Start Accelerometer</button>
+            <div class="permission-note">
+                May require permission on some devices. Tilt your phone to see changes.
+            </div>
+        </div>
+
+        <!-- Gyroscope -->
+        <div class="card">
+            <h2>🔄 Gyroscope</h2>
+            <div class="vector-display">
+                <div class="axis">
+                    <div class="axis-label">Alpha</div>
+                    <div class="axis-value" id="gyroAlpha">0</div>
+                </div>
+                <div class="axis">
+                    <div class="axis-label">Beta</div>
+                    <div class="axis-value" id="gyroBeta">0</div>
+                </div>
+                <div class="axis">
+                    <div class="axis-label">Gamma</div>
+                    <div class="axis-value" id="gyroGamma">0</div>
+                </div>
+            </div>
+            <span class="status inactive" id="gyroStatus">Not Active</span>
+            <button onclick="startGyroscope()">Start Gyroscope</button>
+            <div class="permission-note">
+                Rotate your phone to see orientation changes.
+            </div>
+        </div>
+
+        <!-- Vibration -->
+        <div class="card">
+            <h2>📳 Vibration Control</h2>
+            <div class="button-group">
+                <button onclick="vibrateShort()">Short Pulse</button>
+                <button onclick="vibrateLong()">Long Pulse</button>
+                <button onclick="vibratePattern()">Pattern</button>
+                <button onclick="vibrateSOS()">SOS Pattern</button>
+            </div>
+            <span class="status" id="vibrateStatus">Ready</span>
+        </div>
+    </div>
+
+    <script>
+        // Battery API
+        async function initBattery() {
+            if ('getBattery' in navigator) {
+                try {
+                    const battery = await navigator.getBattery();
+                    updateBatteryInfo(battery);
+                    
+                    battery.addEventListener('levelchange', () => updateBatteryInfo(battery));
+                    battery.addEventListener('chargingchange', () => updateBatteryInfo(battery));
+                    battery.addEventListener('chargingtimechange', () => updateBatteryInfo(battery));
+                    
+                    document.getElementById('batteryStatus').textContent = 'Active';
+                    document.getElementById('batteryStatus').className = 'status active';
+                } catch (error) {
+                    console.error('Battery API error:', error);
+                }
+            }
+        }
+
+        function updateBatteryInfo(battery) {
+            document.getElementById('batteryLevel').textContent = Math.round(battery.level * 100) + '%';
+            document.getElementById('batteryCharging').textContent = battery.charging ? 'Yes' : 'No';
+            
+            if (battery.charging && battery.chargingTime !== Infinity) {
+                const minutes = Math.round(battery.chargingTime / 60);
+                document.getElementById('batteryTime').textContent = minutes + ' min';
+            } else {
+                document.getElementById('batteryTime').textContent = '--';
+            }
+        }
+
+        // Network Information API
+        function initNetwork() {
+            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            
+            if (connection) {
+                updateNetworkInfo(connection);
+                connection.addEventListener('change', () => updateNetworkInfo(connection));
+                
+                document.getElementById('networkStatus').textContent = 'Active';
+                document.getElementById('networkStatus').className = 'status active';
+            }
+        }
+
+        function updateNetworkInfo(connection) {
+            document.getElementById('networkType').textContent = connection.type || connection.effectiveType || 'unknown';
+            document.getElementById('networkEffective').textContent = connection.effectiveType || '--';
+            document.getElementById('networkDownlink').textContent = connection.downlink ? connection.downlink.toFixed(1) : '--';
+            document.getElementById('networkRTT').textContent = connection.rtt || '--';
+        }
+
+        // Accelerometer (Device Motion)
+        function startAccelerometer() {
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                // iOS 13+ requires permission
+                DeviceMotionEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            enableAccelerometer();
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                // Android and older iOS
+                enableAccelerometer();
+            }
+        }
+
+        function enableAccelerometer() {
+            window.addEventListener('devicemotion', handleMotion);
+            document.getElementById('accelStatus').textContent = 'Active';
+            document.getElementById('accelStatus').className = 'status active';
+        }
+
+        function handleMotion(event) {
+            const accel = event.accelerationIncludingGravity;
+            if (accel) {
+                document.getElementById('accelX').textContent = accel.x ? accel.x.toFixed(2) : '0.00';
+                document.getElementById('accelY').textContent = accel.y ? accel.y.toFixed(2) : '0.00';
+                document.getElementById('accelZ').textContent = accel.z ? accel.z.toFixed(2) : '0.00';
+            }
+        }
+
+        // Gyroscope (Device Orientation)
+        function startGyroscope() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                // iOS 13+ requires permission
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            enableGyroscope();
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                // Android and older iOS
+                enableGyroscope();
+            }
+        }
+
+        function enableGyroscope() {
+            window.addEventListener('deviceorientation', handleOrientation);
+            document.getElementById('gyroStatus').textContent = 'Active';
+            document.getElementById('gyroStatus').className = 'status active';
+        }
+
+        function handleOrientation(event) {
+            document.getElementById('gyroAlpha').textContent = event.alpha ? Math.round(event.alpha) + '°' : '0°';
+            document.getElementById('gyroBeta').textContent = event.beta ? Math.round(event.beta) + '°' : '0°';
+            document.getElementById('gyroGamma').textContent = event.gamma ? Math.round(event.gamma) + '°' : '0°';
+        }
+
+        // Vibration API
+        function vibrateShort() {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(100);
+                showVibrateStatus('Short pulse');
+            } else {
+                showVibrateStatus('Not supported', false);
+            }
+        }
+
+        function vibrateLong() {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(500);
+                showVibrateStatus('Long pulse');
+            }
+        }
+
+        function vibratePattern() {
+            if ('vibrate' in navigator) {
+                navigator.vibrate([100, 50, 100, 50, 100]);
+                showVibrateStatus('Pattern played');
+            }
+        }
+
+        function vibrateSOS() {
+            if ('vibrate' in navigator) {
+                // SOS: ... --- ...
+                navigator.vibrate([100, 100, 100, 100, 100, 200, 300, 100, 300, 100, 300, 200, 100, 100, 100, 100, 100]);
+                showVibrateStatus('SOS pattern');
+            }
+        }
+
+        function showVibrateStatus(message, success = true) {
+            const status = document.getElementById('vibrateStatus');
+            status.textContent = message;
+            status.className = success ? 'status active' : 'status warning';
+            
+            setTimeout(() => {
+                status.textContent = 'Ready';
+                status.className = 'status';
+            }, 2000);
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initBattery();
+            initNetwork();
+            
+            // Check vibration support
+            if (!('vibrate' in navigator)) {
+                document.getElementById('vibrateStatus').textContent = 'Not Supported';
+                document.getElementById('vibrateStatus').className = 'status inactive';
+            }
+        });
+    </script>
+</body>
+</html>

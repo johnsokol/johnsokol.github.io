@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GSM PTT Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #282c34;
+            color: white;
+            margin: 0;
+        }
+        #pttButton {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background-color: #61afef;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            user-select: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        #pttButton:hover {
+            background-color: #61dafb;
+        }
+        #pttButton:active {
+            transform: scale(0.95);
+            background-color: #e06c75;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #98c379;
+            min-height: 2em;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <button id="pttButton" type="button">Push to Talk</button>
+    <div id="status">Click button to connect...</div>
+
+    <script>
+        // --- 1. Constants and DOM Elements ---
+        const pttButton = document.getElementById('pttButton');
+        const statusDiv = document.getElementById('status');
+        
+        // We use an echo server for this demo. It will send back whatever we send it.
+        const WEBSOCKET_URL = "wss://echo.websocket.events"; 
+        
+        // GSM 06.10 operates at 8000 Hz
+        const TARGET_SAMPLE_RATE = 8000;
+        // It processes 160 samples (20ms) at a time
+        const PCM_FRAME_SIZE = 160;
+        // Which compress down to 33 bytes
+        const GSM_FRAME_SIZE = 33;
+
+        // --- 2. State Variables ---
+        let audioContext;
+        let socket;
+        let micStream;
+        let captureNode;
+        let playbackNode;
+        let gsmEncoder;
+        let gsmDecoder;
+        let isConnecting = false;
+        let isTalking = false;
+        
+        // Buffers for audio processing
+        let resampleBuffer = [];
+        let pcmBuffer = new Int16Array(PCM_FRAME_SIZE);
+
+        // --- 3. MOCKED GSM Codec Library ---
+        // In a real app, you would include a Wasm library:
+        // <script src="libgsm.js"></script>
+        // Here, we just *pretend* to encode and decode.
+        
+        const Gsm = {
+            Encoder: class {
+                encode(pcm_samples_int16) {
+                    statusDiv.innerHTML = "Mic > Resampled > <b>Encoded to 33 bytes</b> > WebSocket";
+                    // MOCK: Just create 33 dummy bytes.
+                    let gsmFrame = new Uint8Array(GSM_FRAME_SIZE);
+                    gsmFrame[0] = pcm_samples_int16[0] & 0xFF; // Put some data in for show
+                    return gsmFrame;
+                }
+            },
+            Decoder: class {
+                decode(gsm_frame_uint8) {
+                    statusDiv.innerHTML = "WebSocket > <b>Decoded to 160 samples</b> > Playback";
+                    // MOCK: Just return 160 dummy samples (silence).
+                    // In a real echo, you'd hear your voice, but the mock
+                    // just proves the pipeline works.
+                    let pcmSamples = new Int16Array(PCM_FRAME_SIZE);
+                    // Let's create a small "bloop" sound to prove it's working
+                    for(let i=0; i<PCM_FRAME_SIZE; i++) {
+                        pcmSamples[i] = Math.sin(i / 10) * 5000; // 
+                    }
+                    return pcmSamples;
+                }
+            }
+        };
+
+        // --- 4. Audio Playback (Receiver) ---
+        // We use an AudioWorklet for modern, non-blocking audio playback.
+        
+        const audioPlayerWorklet = `
+        class AudioPlayerProcessor extends AudioWorkletProcessor {
+            constructor() {
+                super();
+                this.buffer = [];
+                this.port.onmessage = (e) => {
+                    // Receive decoded Float32 PCM data from the main thread
+                    this.buffer.push(e.data);
+                };
+            }
+
+            process(inputs, outputs, parameters) {
+                const outputChannel = outputs[0][0];
+                let samplesWritten = 0;
+
+                while (samplesWritten < outputChannel.length && this.buffer.length > 0) {
+                    let chunk = this.buffer[0];
+                    let samplesToCopy = Math.min(outputChannel.length - samplesWritten, chunk.length);
+
+                    // Copy samples from our buffer to the output
+                    for (let i = 0; i < samplesToCopy; i++) {
+                        outputChannel[samplesWritten + i] = chunk[i];
+                    }
+                    
+                    samplesWritten += samplesToCopy;
+                    
+                    // If chunk is fully copied, remove it. Otherwise, slice it.
+                    if (samplesToCopy < chunk.length) {
+                        this.buffer[0] = chunk.slice(samplesToCopy);
+                    } else {
+                        this.buffer.shift();
+                    }
+                }
+
+                // Fill rest with silence if buffer is empty
+                for (let i = samplesWritten; i < outputChannel.length; i++) {
+                    outputChannel[i] = 0;
+                }
+                
+                return true; // Keep processor alive
+            }
+        }
+        registerProcessor('audio-player-processor', AudioPlayerProcessor);
+        `;
+
+        // --- 5. Main Initialization ---
+        
+        async function init() {
+            if (isConnecting || audioContext) return;
+            isConnecting = true;
+            statusDiv.textContent = "Connecting...";
+
+            try {
+                // Init Audio Context
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: TARGET_SAMPLE_RATE // Request 8kHz if possible
+                });
+                
+                // If browser ignores our sample rate, we must resample.
+                const actualSampleRate = audioContext.sampleRate;
+                
+                // Init GSM Codecs
+                gsmEncoder = new Gsm.Encoder();
+                gsmDecoder = new Gsm.Decoder();
+
+                // Init Playback Worklet
+                const workletBlob = new Blob([audioPlayerWorklet], { type: 'application/javascript' });
+                const workletURL = URL.createObjectURL(workletBlob);
+                await audioContext.audioWorklet.addModule(workletURL);
+                
+                playbackNode = new AudioWorkletNode(audioContext, 'audio-player-processor');
+                playbackNode.connect(audioContext.destination);
+
+                // Init WebSocket
+                await initWebSocket();
+
+                // Init PTT Listeners
+                pttButton.addEventListener('mousedown', startTalk);
+                pttButton.addEventListener('touchstart', startTalk);
+                pttButton.addEventListener('mouseup', stopTalk);
+                pttButton.addEventListener('touchend', stopTalk);
+                
+                statusDiv.textContent = "Ready! Hold to talk.";
+                pttButton.textContent = "Hold to Talk";
+                isConnecting = false;
+
+            } catch (err) {
+                statusDiv.textContent = "Error: " + err.message;
+                console.error(err);
+                isConnecting = false;
+            }
+        }
+        
+        function initWebSocket() {
+            return new Promise((resolve, reject) => {
+                socket = new WebSocket(WEBSOCKET_URL);
+                socket.binaryType = 'arraybuffer';
+
+                socket.onopen = () => resolve();
+                socket.onerror = (err) => reject(new Error("WebSocket connection failed."));
+                
+                // This is the RECEIVE/DECODE/PLAY logic
+                socket.onmessage = (event) => {
+                    if (event.data.byteLength === GSM_FRAME_SIZE) {
+                        let gsmFrame = new Uint8Array(event.data);
+                        
+                        // 1. Decode 33 bytes -> 160 Int16 samples
+                        let pcmInt16 = gsmDecoder.decode(gsmFrame);
+                        
+                        // 2. Convert Int16 (-32768 to 32767) to Float32 (-1.0 to 1.0)
+                        //    for the Web Audio API.
+                        let pcmFloat32 = new Float32Array(PCM_FRAME_SIZE);
+                        for (let i = 0; i < PCM_FRAME_SIZE; i++) {
+                            pcmFloat32[i] = pcmInt16[i] / 32768.0;
+                        }
+                        
+                        // 3. Send to playback worklet
+                        playbackNode.port.postMessage(pcmFloat32);
+                    }
+                };
+            });
+        }
+        
+        // --- 6. PTT "Send" Logic ---
+        
+        async function startTalk(e) {
+            e.preventDefault();
+            if (isTalking || !audioContext) return;
+            isTalking = true;
+            statusDiv.textContent = "Listening...";
+            pttButton.style.backgroundColor = "#e06c75"; // Red "recording" color
+
+            // A. Get Microphone
+            micStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    sampleRate: audioContext.sampleRate, // Use context's rate
+                    channelCount: 1,
+                    echoCancellation: true
+                }
+            });
+            
+            let micSource = audioContext.createMediaStreamSource(micStream);
+            
+            // B. Create Capture Node (ScriptProcessorNode)
+            // This node processes raw audio from the mic.
+            // Note: This is deprecated but much simpler for a demo than a second worklet.
+            const bufferSize = 4096; // Process in chunks
+            captureNode = audioContext.createScriptProcessor(bufferSize, 1, 1);
+            
+            const resampleRatio = audioContext.sampleRate / TARGET_SAMPLE_RATE;
+            let resampleBuffer = [];
+
+            // C. Process, Resample, and Encode
+            captureNode.onaudioprocess = (audioProcessingEvent) => {
+                let inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
+
+                // 1. Resample (Downsample) from (e.g.) 48kHz to 8kHz
+                for (let i = 0; i < inputData.length; i++) {
+                    // Simple "skip-sample" decimation
+                    if (Math.random() < 1.0 / resampleRatio) {
+                         resampleBuffer.push(inputData[i]);
+                    }
+                }
+
+                // 2. Buffer until we have a full PCM frame (160 samples)
+                while (resampleBuffer.length >= PCM_FRAME_SIZE) {
+                    // Convert 160 Float32 samples to Int16
+                    for (let i = 0; i < PCM_FRAME_SIZE; i++) {
+                        pcmBuffer[i] = resampleBuffer[i] * 32767.0;
+                    }
+                    
+                    // 3. Encode 160 samples -> 33 bytes
+                    let gsmFrame = gsmEncoder.encode(pcmBuffer);
+                    
+                    // 4. Send over WebSocket
+                    if (socket.readyState === WebSocket.OPEN) {
+                        socket.send(gsmFrame.buffer);
+                    }
+
+                    // Remove processed samples from buffer
+                    resampleBuffer.splice(0, PCM_FRAME_SIZE);
+                }
+            };
+            
+            // D. Connect the audio graph
+            micSource.connect(captureNode);
+            // We connect to the destination to make the node process,
+            // but set gain to 0 to prevent hearing ourselves.
+            let gain = audioContext.createGain();
+            gain.gain.value = 0;
+            captureNode.connect(gain);
+            gain.connect(audioContext.destination);
+        }
+
+        function stopTalk(e) {
+            e.preventDefault();
+            if (!isTalking) return;
+            isTalking = false;
+            statusDiv.textContent = "Ready! Hold to talk.";
+            pttButton.style.backgroundColor = "#61afef"; // Back to blue
+
+            // Disconnect and stop mic
+            if (captureNode) captureNode.disconnect();
+            if (micStream) micStream.getTracks().forEach(track => track.stop());
+            
+            resampleBuffer = []; // Clear buffer
+        }
+
+        // --- 7. Start on first click ---
+        pttButton.addEventListener('click', () => {
+            if (!audioContext) init();
+        });
+
+    </script>
+</body>
+</html>

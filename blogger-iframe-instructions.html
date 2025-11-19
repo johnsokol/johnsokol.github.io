@@ -1,0 +1,98 @@
+<!-- ========================================
+     MJPEG PLAYER - BLOGGER IFRAME EMBED
+     ========================================
+     
+     STEP 1: Host your files
+     ------------------------
+     You need to upload both files to a web host:
+     - mjpeg-player-autoload.html
+     - out.xmix (your video file)
+     
+     Hosting options:
+     
+     A) GitHub Pages (FREE - recommended):
+        1. Create a GitHub account (github.com)
+        2. Create a new repository (e.g., "mjpeg-videos")
+        3. Upload both files to the repository
+        4. Go to Settings > Pages
+        5. Enable GitHub Pages
+        6. Your URL will be: https://YOUR-USERNAME.github.io/mjpeg-videos/mjpeg-player-autoload.html
+     
+     B) Google Drive (tricky, not recommended):
+        - Google Drive blocks direct file access, so this won't work easily
+     
+     C) Your own web hosting:
+        - Upload files via FTP to your hosting
+        - Note the full URL to the HTML file
+     
+     D) Free hosting services:
+        - Netlify Drop (netlify.com/drop)
+        - Surge.sh
+        - Vercel
+     
+     STEP 2: Embed in Blogger
+     -------------------------
+     Once your files are hosted, use this iframe code in your Blogger post.
+     Switch to "HTML view" in Blogger and paste this code:
+-->
+
+<!-- IFRAME EMBED CODE - Paste this into your Blogger post (HTML view) -->
+<div style="text-align: center; margin: 20px 0;">
+    <iframe 
+        src="YOUR-URL-HERE/mjpeg-player-autoload.html" 
+        width="800" 
+        height="700" 
+        style="border: 2px solid #4a9eff; border-radius: 8px; max-width: 100%;"
+        frameborder="0"
+        allowfullscreen>
+    </iframe>
+    <p style="color: #666; font-size: 12px; margin-top: 10px;">
+        MJPEG Video Player
+    </p>
+</div>
+
+<!-- ========================================
+     CUSTOMIZATION OPTIONS
+     ========================================
+     
+     Adjust these attributes as needed:
+     
+     width="800"       - Change to make player wider/narrower
+     height="700"      - Change to make player taller/shorter
+     
+     For responsive sizing (works on mobile):
+     Replace the iframe with this:
+-->
+
+<div style="position: relative; padding-bottom: 87.5%; height: 0; overflow: hidden; max-width: 100%; margin: 20px auto;">
+    <iframe 
+        src="YOUR-URL-HERE/mjpeg-player-autoload.html" 
+        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 2px solid #4a9eff; border-radius: 8px;"
+        frameborder="0"
+        allowfullscreen>
+    </iframe>
+</div>
+
+<!-- ========================================
+     IMPORTANT NOTES
+     ========================================
+     
+     1. Replace "YOUR-URL-HERE" with your actual hosted URL
+     
+     2. Both the HTML file AND the video file must be in the same directory on your server
+     
+     3. Make sure the VIDEO_FILE variable in the HTML file matches your video filename:
+        const VIDEO_FILE = 'out.xmix';
+     
+     4. Test the direct URL first in your browser before embedding in Blogger
+     
+     5. If you get CORS errors, make sure:
+        - Files are on a proper web server (not local file://)
+        - Both files are in the same directory
+        - The web server allows the video file to be accessed
+     
+     6. For GitHub Pages specifically:
+        - Wait a few minutes after enabling Pages for it to become active
+        - URL format: https://username.github.io/repository-name/filename.html
+        - Make sure repository is PUBLIC
+-->
