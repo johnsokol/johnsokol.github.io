@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>John Sokol's Interactive Projects</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: linear-gradient(145deg, #1a1a1a 0%, #2d2d2d 100%);
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #ff6b6b;
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            color: #ff6b6b;
+            font-size: 36px;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+            letter-spacing: 3px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            color: #4CAF50;
+            font-size: 24px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #444;
+            text-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+        }
+
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .project-card {
+            background: linear-gradient(145deg, #2a2a2a, #1f1f1f);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+
+        .project-card:hover {
+            border-color: #ff6b6b;
+            box-shadow: 0 5px 20px rgba(255, 107, 107, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .project-card h3 {
+            color: #ff6b6b;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .project-card a {
+            color: #ff6b6b;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .project-card a:hover {
+            color: #ff8888;
+            text-decoration: underline;
+        }
+
+        .project-description {
+            color: #aaa;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-top: 8px;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #444;
+            color: #4CAF50;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            margin-right: 5px;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>JOHN SOKOL'S PROJECTS</h1>
+            <p class="subtitle">Interactive HTML/JavaScript Experiments • Claude.ai Generated</p>
+        </header>
+
+        <!-- GAMES SECTION -->
+        <div class="section">
+            <h2 class="section-title">🎮 VECTOR GRAPHICS GAMES</h2>
+            <div class="project-grid">
+                <div class="project-card">
+                    <h3><a href="vector-kong_4.html">Vector Kong</a></h3>
+                    <p class="project-description">Vector graphics version of Donkey Kong with Firebase leaderboard. Navigate platforms, dodge barrels, rescue Pauline!</p>
+                    <span class="tag">GAME</span>
+                    <span class="tag">VECTOR</span>
+                    <span class="tag">FIREBASE</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="vector-kong-elevators_1.html">Vector Kong - Elevators</a></h3>
+                    <p class="project-description">Vector Kong elevator level variant with moving platforms and fire hazards.</p>
+                    <span class="tag">GAME</span>
+                    <span class="tag">VECTOR</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="vector-kong-final-leaderboard_1.html">Vector Kong - Final Leaderboard</a></h3>
+                    <p class="project-description">Complete Vector Kong with working name input and Firebase leaderboard integration.</p>
+                    <span class="tag">GAME</span>
+                    <span class="tag">FIREBASE</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="crystal-quest_7.html">Crystal Quest</a></h3>
+                    <p class="project-description">HTML/JS remake of the classic Mac game with Firebase scorekeeping, sound effects, and smooth ship controls.</p>
+                    <span class="tag">GAME</span>
+                    <span class="tag">FIREBASE</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="missile-command.html">Missile Command</a></h3>
+                    <p class="project-description">Classic arcade game with Three.js vector graphics. Defend cities from incoming missiles!</p>
+                    <span class="tag">GAME</span>
+                    <span class="tag">THREE.JS</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="missile-command-v8.html">Missile Command v8</a></h3>
+                    <p class="project-description">Latest iteration of Missile Command with improved graphics and gameplay.</p>
+                    <span class="tag">GAME</span>
+                    <span class="tag">VECTOR</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="marble-madness_4.html">Marble Madness</a></h3>
+                    <p class="project-description">Isometric marble racing game with physics and obstacles.</p>
+                    <span class="tag">GAME</span>
+                    <span class="tag">PHYSICS</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="zaxxon-game_1.html">Zaxxon</a></h3>
+                    <p class="project-description">Isometric space shooter with vector graphics.</p>
+                    <span class="tag">GAME</span>
+                    <span class="tag">VECTOR</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="battlezone-tank-game_1.html">Battlezone Tank Game</a></h3>
+                    <p class="project-description">Vector graphics tank combat game inspired by the arcade classic.</p>
+                    <span class="tag">GAME</span>
+                    <span class="tag">VECTOR</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="construction-level_3.html">Construction Level</a></h3>
+                    <p class="project-description">Platform game construction level editor and player.</p>
+                    <span class="tag">GAME</span>
+                    <span class="tag">EDITOR</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="dancing-demon_3.html">Dancing Demon</a></h3>
+                    <p class="project-description">Recreation of the classic TRS-80 program. Choreograph dance routines synchronized to GW-BASIC music!</p>
+                    <span class="tag">GAME</span>
+                    <span class="tag">RETRO</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- MUSIC SECTION -->
+        <div class="section">
+            <h2 class="section-title">🎵 MUSIC & AUDIO</h2>
+            <div class="project-grid">
+                <div class="project-card">
+                    <h3><a href="tr707.html">Roland TR-707 Rhythm Composer</a></h3>
+                    <p class="project-description">Authentic drum machine replica with 16-step sequencer, 15 drum voices, and authentic TR-707 interface.</p>
+                    <span class="tag">AUDIO</span>
+                    <span class="tag">SYNTH</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="gwbasic-chord-player-v3.html">GW-BASIC Chord Player v3</a></h3>
+                    <p class="project-description">Extended PLAY notation with chord support [C,E,G]4. Includes waveform visualizer, ADSR controls, and example gallery.</p>
+                    <span class="tag">AUDIO</span>
+                    <span class="tag">RETRO</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="midi-to-gwbasic-converter.html">MIDI to GW-BASIC Converter</a></h3>
+                    <p class="project-description">Convert MIDI files to GW-BASIC PLAY notation. Supports polyphony with chord syntax.</p>
+                    <span class="tag">TOOL</span>
+                    <span class="tag">CONVERTER</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="beginner-piano-pieces2.html">Beginner Piano Pieces</a></h3>
+                    <p class="project-description">Collection of simple piano pieces in GW-BASIC notation: Twinkle Twinkle, Ode to Joy, Mary Had a Little Lamb, and more.</p>
+                    <span class="tag">MUSIC</span>
+                    <span class="tag">EDUCATION</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="midi_analyzer_player2.html">MIDI Analyzer Player</a></h3>
+                    <p class="project-description">Analyze and play MIDI files with real-time visualization and export options.</p>
+                    <span class="tag">AUDIO</span>
+                    <span class="tag">TOOL</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="marble_madness_player.html">Marble Madness Music Player</a></h3>
+                    <p class="project-description">Interactive player for Marble Madness "Intermediate Race" sheet music with Web Audio API.</p>
+                    <span class="tag">AUDIO</span>
+                    <span class="tag">GAME MUSIC</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="firebird_extended3.html">Firebird Suite Player</a></h3>
+                    <p class="project-description">Stravinsky's Firebird Suite rendered in GW-BASIC notation with Web Audio synthesis.</p>
+                    <span class="tag">AUDIO</span>
+                    <span class="tag">CLASSICAL</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="sonic-pi-melody.html">Sonic Pi Melody</a></h3>
+                    <p class="project-description">Sonic Pi to JavaScript converter with FM synthesis. BPM 86 mallets synth.</p>
+                    <span class="tag">AUDIO</span>
+                    <span class="tag">CONVERTER</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="amen-break.html">Amen Break</a></h3>
+                    <p class="project-description">The iconic drum break pattern at 170 BPM with visual feedback showing each hit.</p>
+                    <span class="tag">AUDIO</span>
+                    <span class="tag">DRUMS</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="baseline-drums-140.html">Baseline Drums 140</a></h3>
+                    <p class="project-description">140 BPM drum pattern and baseline generator.</p>
+                    <span class="tag">AUDIO</span>
+                    <span class="tag">DRUMS</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="filtered-dnb.html">Filtered DnB</a></h3>
+                    <p class="project-description">Drum & Bass with dynamically filtered Amen Break. Resonant lowpass filter sweeps from 40-120 Hz.</p>
+                    <span class="tag">AUDIO</span>
+                    <span class="tag">DNB</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="blockgame.html">Blockgame</a></h3>
+                    <p class="project-description">Sonic Pi composition by DJ_Dave converted to JavaScript with synchronized loops and effects.</p>
+                    <span class="tag">AUDIO</span>
+                    <span class="tag">SONIC PI</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="gsm-audio-player.html">GSM Audio Player</a></h3>
+                    <p class="project-description">Player for GSM encoded audio files.</p>
+                    <span class="tag">AUDIO</span>
+                    <span class="tag">CODEC</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="gemini-gsm-ptt.html">Gemini GSM PTT</a></h3>
+                    <p class="project-description">GSM push-to-talk audio interface with Gemini AI integration.</p>
+                    <span class="tag">AUDIO</span>
+                    <span class="tag">AI</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="r2d2-speech.html">R2D2 Speech Synthesizer</a></h3>
+                    <p class="project-description">Generate authentic R2D2 beeps, chirps, and whistles with mood system and visual feedback.</p>
+                    <span class="tag">AUDIO</span>
+                    <span class="tag">SYNTH</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIDEO/MEDIA SECTION -->
+        <div class="section">
+            <h2 class="section-title">📹 VIDEO & MEDIA PLAYERS</h2>
+            <div class="project-grid">
+                <div class="project-card">
+                    <h3><a href="mjpeg-player-autoload.html">Motion JPEG Player (Autoload)</a></h3>
+                    <p class="project-description">Player for old motion JPEG format files (.xjpg) from 1997. Auto-loads video on web servers.</p>
+                    <span class="tag">VIDEO</span>
+                    <span class="tag">RETRO</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="mjpeg-player-universal_1.html">Motion JPEG Player (Universal)</a></h3>
+                    <p class="project-description">Universal MJPEG player that works both locally and on servers. Parses multipart JPEG format.</p>
+                    <span class="tag">VIDEO</span>
+                    <span class="tag">PLAYER</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="streetvideo.html">Street Video</a></h3>
+                    <p class="project-description">Demo video player for old motion JPEG street footage.</p>
+                    <span class="tag">VIDEO</span>
+                    <span class="tag">DEMO</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="stl-viewer.html">STL Viewer</a></h3>
+                    <p class="project-description">3D model viewer for STL files with rotation and zoom controls.</p>
+                    <span class="tag">3D</span>
+                    <span class="tag">VIEWER</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOOLS & UTILITIES SECTION -->
+        <div class="section">
+            <h2 class="section-title">🛠️ TOOLS & UTILITIES</h2>
+            <div class="project-grid">
+                <div class="project-card">
+                    <h3><a href="phone-sensors.html">Phone Sensors</a></h3>
+                    <p class="project-description">Access phone sensors: accelerometer, gyroscope, GPS, battery, compass, and vibration.</p>
+                    <span class="tag">MOBILE</span>
+                    <span class="tag">SENSORS</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="robot_arm_sliders2.html">Robot Arm Controller</a></h3>
+                    <p class="project-description">Interactive robot arm control with sliders and WebSocket synchronization.</p>
+                    <span class="tag">ROBOTICS</span>
+                    <span class="tag">CONTROL</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="robot.html">Robot Animation</a></h3>
+                    <p class="project-description">Animated robot character with physics and controls.</p>
+                    <span class="tag">ANIMATION</span>
+                    <span class="tag">ROBOTICS</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="improved_rf_circuit.svg">RF Circuit Diagram</a></h3>
+                    <p class="project-description">SVG schematic for RF sine wave generator circuit.</p>
+                    <span class="tag">ELECTRONICS</span>
+                    <span class="tag">CIRCUIT</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="blogger-iframe-instructions.html">Blogger iFrame Instructions</a></h3>
+                    <p class="project-description">Guide for embedding interactive HTML projects in Blogger using iframes.</p>
+                    <span class="tag">TUTORIAL</span>
+                    <span class="tag">WEB</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="reader2.html">Document Reader</a></h3>
+                    <p class="project-description">Text document reader with formatting support.</p>
+                    <span class="tag">TOOL</span>
+                    <span class="tag">READER</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ORIGINAL FILES SECTION -->
+        <div class="section">
+            <h2 class="section-title">📁 ORIGINAL MEDIA FILES</h2>
+            <div class="project-grid">
+                <div class="project-card">
+                    <h3><a href="afi.xjpg">afi.xjpg</a></h3>
+                    <p class="project-description">Original motion JPEG file from 1997.</p>
+                    <span class="tag">RETRO</span>
+                    <span class="tag">VIDEO</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="street1.xjpg">street1.xjpg</a></h3>
+                    <p class="project-description">Original motion JPEG street video from 1997.</p>
+                    <span class="tag">RETRO</span>
+                    <span class="tag">VIDEO</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="test2.xjpg">test2.xjpg</a></h3>
+                    <p class="project-description">Test motion JPEG file from 1997.</p>
+                    <span class="tag">RETRO</span>
+                    <span class="tag">VIDEO</span>
+                </div>
+
+                <div class="project-card">
+                    <h3><a href="race.gif">race.gif</a></h3>
+                    <p class="project-description">Animated GIF of racing action.</p>
+                    <span class="tag">GIF</span>
+                    <span class="tag">ANIMATION</span>
+                </div>
+            </div>
+        </div>
+
+        <footer style="text-align: center; margin-top: 60px; padding-top: 20px; border-top: 1px solid #444; color: #888;">
+            <p>All projects generated with Claude.ai • <a href="https://github.com/johnsokol/johnsokol.github.io" style="color: #ff6b6b;">GitHub Repository</a></p>
+            <p style="font-size: 12px; margin-top: 10px;">Last updated: November 2025</p>
+        </footer>
+    </div>
+</body>
+</html>
