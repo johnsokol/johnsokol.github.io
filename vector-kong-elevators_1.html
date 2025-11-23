@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector Kong</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: monospace;
+            overflow: hidden;
+        }
+        #gameCanvas {
+            border: 2px solid #0ff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            color: #0ff;
+            font-size: 14px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="560" height="720"></canvas>
+    <div id="instructions">Arrow Keys: Move | Space: Jump | Enter: Start</div>
+    
+    <script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Game constants
+const GRAVITY = 0.4;
+const JUMP_FORCE = -9;
+const PLAYER_SPEED = 3;
+const CLIMB_SPEED = 2;
+const BARREL_SPEED = 2.5;
+const ELEVATOR_SPEED = 1.5;
+const FIRE_WANDER_SPEED = 0.8;
+
+// Game state
+let gameState = 'title';
+let score = 0;
+let lives = 3;
+let level = 1;
+let bonus = 5000;
+let bonusTimer = null;
+let highScore = 0;
+
+// Glow effect
+let glowIntensity = 0;
+let glowDir = 1;
+
+// Player
+let player = {
+    x: 80,
+    y: 650,
+    width: 24,
+    height: 32,
+    vx: 0,
+    vy: 0,
+    onGround: false,
+    onLadder: false,
+    climbing: false,
+    hasHammer: false,
+    hammerTimer: 0,
+    hammerSwing: 0,
+    facing: 1,
+    frame: 0,
+    frameTimer: 0,
+    onElevator: false,
+    currentElevator: null,
+    // Burning death animation
+    burning: false,
+    burningTimer: 0,
+    burningDuration: 120, // 2 seconds at 60fps
+    burningRunX: 0
+};
+
+// Donkey Kong
+let dk = {
+    x: 120,
+    y: 80,
+    frame: 0,
+    frameTimer: 0,
+    throwTimer: 0,
+    angry: false
+};
+
+// Pauline
+let pauline = {
+    x: 280,
+    y: 45,
+    frame: 0,
+    frameTimer: 0
+};
+
+// Game objects
+let platforms = [];
+let ladders = [];
+let barrels = [];
+let fires = [];
+let items = [];
+let hammers = [];
+let elevators = [];
+
+// Input
+let keys = {};
+
+// Frame counter
+let frameCount = 0;
+
+// Initialize game
+init();
+
+function init() {
+    setupLevel(level);
+    gameLoop();
+}
+
+// Setup level platforms and ladders
+function setupLevel(lvl) {
+    platforms = [];
+    ladders = [];
+    barrels = [];
+    fires = [];
+    items = [];
+    hammers = [];
+    elevators = [];
+    
+    // Main platforms for all levels
+    platforms.push({ x: 20, y: 680, width: 520, height: 4, type: 'platform' });
+    platforms.push({ x: 40, y: 590, width: 480, height: 4, type: 'platform' });
+    platforms.push({ x: 20, y: 500, width: 500, height: 4, type: 'platform' });
+    platforms.push({ x: 60, y: 410, width: 460, height: 4, type: 'platform' });
+    platforms.push({ x: 40, y: 320, width: 480, height: 4, type: 'platform' });
+    platforms.push({ x: 20, y: 230, width: 500, height: 4, type: 'platform' });
+    platforms.push({ x: 60, y: 140, width: 420, height: 4, type: 'platform' });
+    
+    // Ladders
+    ladders.push({ x: 480, y: 590, width: 20, height: 90 });
+    ladders.push({ x: 60, y: 500, width: 20, height: 90 });
+    ladders.push({ x: 450, y: 410, width: 20, height: 90 });
+    ladders.push({ x: 100, y: 320, width: 20, height: 90 });
+    ladders.push({ x: 420, y: 230, width: 20, height: 90 });
+    ladders.push({ x: 150, y: 140, width: 20, height: 90 });
+    
+    // Add elevators for board 2 and beyond
+    if (lvl >= 2) {
+        // Elevator between platform 3 and 4
+        elevators.push({
+            x: 300,
+            y: 450,
+            width: 60,
+            height: 10,
+            minY: 410,
+            maxY: 500,
+            direction: 1,
+            speed: ELEVATOR_SPEED
+        });
+        
+        // Elevator between platform 5 and 6
+        elevators.push({
+            x: 200,
+            y: 230,
+            width: 60,
+            height: 10,
+            minY: 230,
+            maxY: 320,
+            direction: -1,
+            speed: ELEVATOR_SPEED
+        });
+    }
+    
+    if (lvl >= 3) {
+        // Additional elevator at higher levels
+        elevators.push({
+            x: 400,
+            y: 320,
+            width: 50,
+            height: 10,
+            minY: 230,
+            maxY: 410,
+            direction: 1,
+            speed: ELEVATOR_SPEED * 1.2
+        });
+    }
+    
+    // Wandering fires
+    let fireCount = Math.min(2 + lvl, 6);
+    for (let i = 0; i < fireCount; i++) {
+        let platformIndex = Math.floor(Math.random() * (platforms.length - 2)) + 1;
+        let platform = platforms[platformIndex];
+        fires.push({
+            x: platform.x + Math.random() * (platform.width - 40),
+            y: platform.y - 24,
+            vx: (Math.random() > 0.5 ? 1 : -1) * FIRE_WANDER_SPEED,
+            platform: platformIndex,
+            width: 20,
+            height: 24,
+            frame: 0,
+            frameTimer: 0,
+            wanderTimer: 0,
+            wanderDuration: 60 + Math.random() * 120
+        });
+    }
+    
+    // Hammers
+    if (lvl % 2 === 1) {
+        hammers.push({ x: 100, y: 450, active: true });
+    }
+    hammers.push({ x: 450, y: 270, active: true });
+    
+    // Items
+    items.push({ x: 250, y: 540, type: 'hat', collected: false, points: 300 });
+    items.push({ x: 350, y: 230, type: 'purse', collected: false, points: 300 });
+    
+    // Reset player position
+    player.x = 80;
+    player.y = 650;
+    player.vx = 0;
+    player.vy = 0;
+    player.hasHammer = false;
+    player.burning = false;
+    player.burningTimer = 0;
+    player.onElevator = false;
+    player.currentElevator = null;
+    
+    // Reset DK
+    dk.x = 100;
+    dk.y = 100;
+    dk.throwTimer = 60;
+    
+    bonus = 5000;
+}
+
+// Draw vector line with glow
+function drawLine(x1, y1, x2, y2, color = '#fff', lineWidth = 2) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8 + glowIntensity * 4;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+}
+
+// Draw vector rectangle
+function drawRect(x, y, width, height, color = '#fff', lineWidth = 2) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8 + glowIntensity * 4;
+    ctx.strokeRect(x, y, width, height);
+    ctx.shadowBlur = 0;
+}
+
+// Draw filled rectangle with glow
+function drawFilledRect(x, y, width, height, color = '#fff') {
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 12 + glowIntensity * 6;
+    ctx.fillRect(x, y, width, height);
+    ctx.shadowBlur = 0;
+}
+
+// Draw vector text
+function drawText(text, x, y, size = 20, color = '#fff', align = 'left') {
+    ctx.font = `${size}px monospace`;
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 10 + glowIntensity * 5;
+    ctx.fillText(text, x, y);
+    ctx.shadowBlur = 0;
+}
+
+// Draw Donkey Kong
+function drawDK(x, y, frame) {
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = '#fff';
+    ctx.shadowBlur = 12;
+    
+    // Body
+    ctx.beginPath();
+    ctx.ellipse(x + 40, y + 35, 35, 25, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Head
+    ctx.beginPath();
+    ctx.ellipse(x + 40, y + 5, 20, 15, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Eyes
+    ctx.beginPath();
+    ctx.arc(x + 32, y, 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x + 48, y, 4, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Eyebrows (angry)
+    drawLine(x + 26, y - 8, x + 38, y - 4, '#fff', 2);
+    drawLine(x + 42, y - 4, x + 54, y - 8, '#fff', 2);
+    
+    // Mouth
+    ctx.beginPath();
+    ctx.ellipse(x + 40, y + 12, 12, 8, 0, 0, Math.PI);
+    ctx.stroke();
+    
+    // Arms - animated
+    let armOffset = Math.sin(frame * 0.1) * 8;
+    drawLine(x + 10, y + 30, x + 5 + armOffset, y + 50, '#fff', 2);
+    drawLine(x + 70, y + 30, x + 75 - armOffset, y + 50, '#fff', 2);
+    
+    // Legs
+    drawLine(x + 25, y + 60, x + 20, y + 80, '#fff', 2);
+    drawLine(x + 55, y + 60, x + 60, y + 80, '#fff', 2);
+    
+    ctx.shadowBlur = 0;
+}
+
+// Draw Pauline
+function drawPauline(x, y, frame) {
+    ctx.strokeStyle = '#f0f';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#f0f';
+    ctx.shadowBlur = 10;
+    
+    // Head
+    ctx.beginPath();
+    ctx.arc(x, y, 8, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Hair
+    drawLine(x - 8, y - 5, x - 10, y - 8, '#f0f', 2);
+    drawLine(x + 8, y - 5, x + 10, y - 8, '#f0f', 2);
+    
+    // Body (dress)
+    ctx.beginPath();
+    ctx.moveTo(x, y + 8);
+    ctx.lineTo(x - 12, y + 28);
+    ctx.lineTo(x + 12, y + 28);
+    ctx.closePath();
+    ctx.stroke();
+    
+    // Arms - waving for help
+    let waveOffset = Math.sin(frame * 0.2) * 10;
+    drawLine(x - 8, y + 10, x - 15, y - waveOffset, '#f0f', 2);
+    drawLine(x + 8, y + 10, x + 15, y - 5, '#f0f', 2);
+    
+    // HELP text
+    if (frame % 60 < 30) {
+        drawText('HELP!', x - 25, y - 20, 12, '#f0f');
+    }
+    
+    ctx.shadowBlur = 0;
+}
+
+// Draw player
+function drawPlayer(x, y, facing, frame, hasHammer, burning) {
+    let color = burning ? '#ff0' : '#0ff';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = burning ? 15 : 10;
+    
+    // Head
+    ctx.beginPath();
+    ctx.arc(x + 12, y + 8, 6, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Hat
+    drawLine(x + 6, y + 6, x + 18, y + 6, color, 2);
+    drawLine(x + 8, y + 6, x + 8, y + 2, color, 2);
+    drawLine(x + 16, y + 6, x + 16, y + 2, color, 2);
+    
+    // If burning, draw flames on head
+    if (burning) {
+        let flameOffset1 = Math.sin(frame * 0.3) * 3;
+        let flameOffset2 = Math.cos(frame * 0.3) * 3;
+        drawLine(x + 8, y + 2, x + 6 + flameOffset1, y - 5, '#ff0', 2);
+        drawLine(x + 12, y + 2, x + 12 + flameOffset2, y - 6, '#f80', 2);
+        drawLine(x + 16, y + 2, x + 18 - flameOffset1, y - 4, '#f00', 2);
+    }
+    
+    // Body
+    drawLine(x + 12, y + 14, x + 12, y + 24, color, 2);
+    
+    // Arms
+    if (hasHammer) {
+        let swingAngle = Math.sin(frame * 0.4) * Math.PI / 3;
+        let hammerX = x + 12 + Math.cos(swingAngle) * 12;
+        let hammerY = y + 18 + Math.sin(swingAngle) * 12;
+        drawLine(x + 12, y + 16, hammerX, hammerY, color, 2);
+        // Hammer head
+        drawRect(hammerX - 6, hammerY - 4, 12, 8, '#ff0');
+    } else {
+        let armOffset = Math.sin(frame * 0.2) * 4;
+        drawLine(x + 12, y + 16, x + facing * 8, y + 20 + armOffset, color, 2);
+        drawLine(x + 12, y + 16, x - facing * 8, y + 20 - armOffset, color, 2);
+    }
+    
+    // Legs
+    let legOffset = Math.sin(frame * 0.2) * 4;
+    drawLine(x + 12, y + 24, x + 6 + legOffset, y + 32, color, 2);
+    drawLine(x + 12, y + 24, x + 18 - legOffset, y + 32, color, 2);
+    
+    ctx.shadowBlur = 0;
+}
+
+// Draw barrel
+function drawBarrel(x, y, fallThrough = false) {
+    let color = fallThrough ? '#ff0' : '#0ff';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = fallThrough ? 12 : 8;
+    
+    // Barrel body
+    ctx.beginPath();
+    ctx.ellipse(x + 10, y + 10, 10, 8, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Barrel bands
+    drawLine(x + 2, y + 10, x + 18, y + 10, color, 1);
+    drawLine(x + 4, y + 6, x + 16, y + 6, color, 1);
+    drawLine(x + 4, y + 14, x + 16, y + 14, color, 1);
+    
+    ctx.shadowBlur = 0;
+}
+
+// Draw wandering fire
+function drawFire(x, y, frame) {
+    // Body (cyan)
+    ctx.strokeStyle = '#0ff';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#0ff';
+    ctx.shadowBlur = 8;
+    
+    // Simple body
+    ctx.beginPath();
+    ctx.arc(x + 10, y + 18, 6, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Face
+    ctx.beginPath();
+    ctx.arc(x + 7, y + 16, 2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x + 13, y + 16, 2, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Flames on top (animated)
+    let flame1 = Math.sin(frame * 0.15) * 3;
+    let flame2 = Math.cos(frame * 0.15 + 1) * 3;
+    let flame3 = Math.sin(frame * 0.15 + 2) * 3;
+    
+    ctx.strokeStyle = '#ff0';
+    ctx.shadowColor = '#ff0';
+    ctx.shadowBlur = 10;
+    drawLine(x + 5, y + 12, x + 3 + flame1, y + 5, '#f80', 2);
+    drawLine(x + 10, y + 12, x + 10 + flame2, y + 3, '#ff0', 2);
+    drawLine(x + 15, y + 12, x + 17 + flame3, y + 6, '#f00', 2);
+    
+    ctx.shadowBlur = 0;
+}
+
+// Draw elevator
+function drawElevator(elevator) {
+    // Green support beams (top and bottom)
+    drawLine(elevator.x, elevator.minY - 10, elevator.x + elevator.width, elevator.minY - 10, '#0f0', 3);
+    drawLine(elevator.x, elevator.maxY + 10, elevator.x + elevator.width, elevator.maxY + 10, '#0f0', 3);
+    
+    // Draw vertical support lines
+    drawLine(elevator.x, elevator.minY - 10, elevator.x, elevator.maxY + 10, '#0f0', 2);
+    drawLine(elevator.x + elevator.width, elevator.minY - 10, elevator.x + elevator.width, elevator.maxY + 10, '#0f0', 2);
+    
+    // Purple moving platform
+    drawFilledRect(elevator.x, elevator.y, elevator.width, elevator.height, '#f0f');
+    drawRect(elevator.x, elevator.y, elevator.width, elevator.height, '#fff', 1);
+}
+
+// Draw ladder
+function drawLadder(ladder) {
+    drawLine(ladder.x, ladder.y, ladder.x, ladder.y + ladder.height, '#0ff', 2);
+    drawLine(ladder.x + ladder.width, ladder.y, ladder.x + ladder.width, ladder.y + ladder.height, '#0ff', 2);
+    
+    // Rungs
+    for (let i = 0; i <= ladder.height; i += 12) {
+        drawLine(ladder.x, ladder.y + i, ladder.x + ladder.width, ladder.y + i, '#0ff', 1);
+    }
+}
+
+// Draw platform
+function drawPlatform(platform) {
+    drawLine(platform.x, platform.y, platform.x + platform.width, platform.y, '#f0f', 3);
+}
+
+// Update game state
+function update() {
+    if (gameState === 'playing') {
+        updatePlayer();
+        updateBarrels();
+        updateFires();
+        updateElevators();
+        updateDK();
+        checkCollisions();
+        
+        // Decrease bonus
+        if (bonus > 0 && frameCount % 60 === 0) {
+            bonus = Math.max(0, bonus - 10);
+        }
+        
+        // Check win condition
+        if (player.y < 150 && Math.abs(player.x - pauline.x) < 40) {
+            levelComplete();
+        }
+    }
+}
+
+// Update player
+function updatePlayer() {
+    // If burning, run around frantically
+    if (player.burning) {
+        player.burningTimer++;
+        
+        // Run back and forth
+        player.vx = Math.sin(player.burningTimer * 0.3) * PLAYER_SPEED * 2;
+        player.x += player.vx;
+        
+        // Animate frame faster
+        player.frameTimer++;
+        if (player.frameTimer > 3) {
+            player.frame++;
+            player.frameTimer = 0;
+        }
+        
+        // Die after burning duration
+        if (player.burningTimer >= player.burningDuration) {
+            loseLife();
+        }
+        return;
+    }
+    
+    // Normal movement
+    player.vx = 0;
+    
+    if (player.climbing) {
+        player.vy = 0;
+        if (keys['ArrowUp']) {
+            player.vy = -CLIMB_SPEED;
+        } else if (keys['ArrowDown']) {
+            player.vy = CLIMB_SPEED;
+        }
+    } else {
+        // Horizontal movement
+        if (keys['ArrowLeft']) {
+            player.vx = -PLAYER_SPEED;
+            player.facing = -1;
+        } else if (keys['ArrowRight']) {
+            player.vx = PLAYER_SPEED;
+            player.facing = 1;
+        }
+        
+        // Jump
+        if (keys[' '] && player.onGround) {
+            player.vy = JUMP_FORCE;
+            player.onGround = false;
+        }
+        
+        // Apply gravity
+        player.vy += GRAVITY;
+    }
+    
+    // Update position
+    player.x += player.vx;
+    player.y += player.vy;
+    
+    // Bounds checking
+    player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+    
+    // Animation
+    if (Math.abs(player.vx) > 0 || Math.abs(player.vy) > 0) {
+        player.frameTimer++;
+        if (player.frameTimer > 5) {
+            player.frame++;
+            player.frameTimer = 0;
+        }
+    }
+    
+    // Check ladder collision
+    checkLadderCollision();
+    
+    // Check platform collision
+    if (!player.climbing) {
+        checkPlatformCollision();
+        checkElevatorCollision();
+    }
+    
+    // Hammer timer
+    if (player.hasHammer) {
+        player.hammerTimer--;
+        if (player.hammerTimer <= 0) {
+            player.hasHammer = false;
+        }
+    }
+}
+
+// Update barrels
+function updateBarrels() {
+    for (let i = barrels.length - 1; i >= 0; i--) {
+        let barrel = barrels[i];
+        
+        // Move barrel
+        barrel.x += barrel.vx;
+        
+        // Fall through barrels
+        if (barrel.fallThrough) {
+            barrel.y += 2;
+            if (barrel.y > canvas.height) {
+                barrels.splice(i, 1);
+            }
+            continue;
+        }
+        
+        // Apply gravity
+        barrel.vy += GRAVITY;
+        barrel.y += barrel.vy;
+        
+        // Check platform collision for barrels
+        barrel.onGround = false;
+        for (let platform of platforms) {
+            if (barrel.x + barrel.width > platform.x &&
+                barrel.x < platform.x + platform.width &&
+                barrel.y + barrel.height >= platform.y &&
+                barrel.y + barrel.height <= platform.y + 10 &&
+                barrel.vy >= 0) {
+                
+                barrel.y = platform.y - barrel.height;
+                barrel.vy = 0;
+                barrel.onGround = true;
+                break;
+            }
+        }
+        
+        // Reverse at edges
+        if (barrel.onGround) {
+            if (barrel.x < 20 || barrel.x > canvas.width - barrel.width - 20) {
+                barrel.vx *= -1;
+            }
+        }
+        
+        // Remove if off screen
+        if (barrel.y > canvas.height) {
+            barrels.splice(i, 1);
+        }
+    }
+}
+
+// Update fires (wandering behavior)
+function updateFires() {
+    for (let fire of fires) {
+        // Wander behavior
+        fire.wanderTimer++;
+        if (fire.wanderTimer > fire.wanderDuration) {
+            // Change direction randomly
+            if (Math.random() > 0.7) {
+                fire.vx *= -1;
+            }
+            fire.wanderTimer = 0;
+            fire.wanderDuration = 60 + Math.random() * 120;
+        }
+        
+        // Move fire
+        fire.x += fire.vx;
+        
+        // Get current platform
+        let platform = platforms[fire.platform];
+        
+        // Turn around at platform edges
+        if (fire.x < platform.x + 10 || fire.x + fire.width > platform.x + platform.width - 10) {
+            fire.vx *= -1;
+            fire.x = Math.max(platform.x + 10, Math.min(platform.x + platform.width - fire.width - 10, fire.x));
+        }
+        
+        // Occasionally jump to adjacent platform
+        if (Math.random() < 0.002 && fire.platform > 0) {
+            fire.platform = Math.max(0, Math.min(platforms.length - 1, fire.platform + (Math.random() > 0.5 ? 1 : -1)));
+            platform = platforms[fire.platform];
+            fire.y = platform.y - fire.height;
+            fire.x = platform.x + Math.random() * (platform.width - fire.width);
+        }
+        
+        // Animate
+        fire.frameTimer++;
+        if (fire.frameTimer > 5) {
+            fire.frame++;
+            fire.frameTimer = 0;
+        }
+    }
+}
+
+// Update elevators
+function updateElevators() {
+    for (let elevator of elevators) {
+        elevator.y += elevator.speed * elevator.direction;
+        
+        // Reverse direction at limits
+        if (elevator.y <= elevator.minY) {
+            elevator.y = elevator.minY;
+            elevator.direction = 1;
+        } else if (elevator.y >= elevator.maxY) {
+            elevator.y = elevator.maxY;
+            elevator.direction = -1;
+        }
+    }
+}
+
+// Check elevator collision
+function checkElevatorCollision() {
+    player.onElevator = false;
+    player.currentElevator = null;
+    
+    for (let elevator of elevators) {
+        // Check if player is landing on elevator
+        if (player.x + player.width > elevator.x + 5 &&
+            player.x < elevator.x + elevator.width - 5 &&
+            player.y + player.height >= elevator.y - 5 &&
+            player.y + player.height <= elevator.y + 12 &&
+            player.vy >= 0) {
+            
+            player.y = elevator.y - player.height;
+            player.vy = 0;
+            player.onGround = true;
+            player.onElevator = true;
+            player.currentElevator = elevator;
+            break;
+        }
+    }
+    
+    // If on elevator, move with it
+    if (player.onElevator && player.currentElevator) {
+        player.y += player.currentElevator.speed * player.currentElevator.direction;
+    }
+}
+
+// Update DK
+function updateDK() {
+    dk.frameTimer++;
+    if (dk.frameTimer > 10) {
+        dk.frame++;
+        dk.frameTimer = 0;
+    }
+    
+    // Throw barrels
+    dk.throwTimer--;
+    if (dk.throwTimer <= 0) {
+        throwBarrel();
+        dk.throwTimer = 90 - level * 5; // Throw faster at higher levels
+    }
+}
+
+// Throw barrel from DK
+function throwBarrel() {
+    let fallThrough = level >= 5 && Math.random() < 0.3;
+    barrels.push({
+        x: dk.x + 60,
+        y: dk.y + 70,
+        width: 20,
+        height: 20,
+        vx: BARREL_SPEED + level * 0.2,
+        vy: 0,
+        onGround: false,
+        fallThrough: fallThrough
+    });
+}
+
+// Check ladder collision
+function checkLadderCollision() {
+    player.onLadder = false;
+    
+    for (let ladder of ladders) {
+        if (player.x + player.width > ladder.x &&
+            player.x < ladder.x + ladder.width &&
+            player.y + player.height > ladder.y &&
+            player.y < ladder.y + ladder.height) {
+            
+            player.onLadder = true;
+            
+            if (keys['ArrowUp'] || keys['ArrowDown']) {
+                player.climbing = true;
+                player.x = ladder.x + ladder.width / 2 - player.width / 2;
+            }
+            break;
+        }
+    }
+    
+    if (!player.onLadder) {
+        player.climbing = false;
+    }
+}
+
+// Check platform collision
+function checkPlatformCollision() {
+    player.onGround = false;
+    
+    for (let platform of platforms) {
+        if (player.x + player.width > platform.x &&
+            player.x < platform.x + platform.width &&
+            player.y + player.height >= platform.y &&
+            player.y + player.height <= platform.y + 10 &&
+            player.vy >= 0) {
+            
+            player.y = platform.y - player.height;
+            player.vy = 0;
+            player.onGround = true;
+            break;
+        }
+    }
+}
+
+// Check all collisions
+function checkCollisions() {
+    if (player.burning) return; // Already dying
+    
+    // Barrel collision
+    for (let barrel of barrels) {
+        if (player.x + player.width > barrel.x &&
+            player.x < barrel.x + barrel.width &&
+            player.y + player.height > barrel.y &&
+            player.y < barrel.y + barrel.height) {
+            
+            if (player.hasHammer) {
+                // Destroy barrel
+                barrels.splice(barrels.indexOf(barrel), 1);
+                score += 500;
+            } else {
+                loseLife();
+            }
+        }
+    }
+    
+    // Fire collision
+    for (let fire of fires) {
+        if (player.x + player.width > fire.x &&
+            player.x < fire.x + fire.width &&
+            player.y + player.height > fire.y &&
+            player.y < fire.y + fire.height) {
+            
+            if (player.hasHammer) {
+                score += 300;
+                // Respawn fire elsewhere
+                let platformIndex = Math.floor(Math.random() * (platforms.length - 2)) + 1;
+                let platform = platforms[platformIndex];
+                fire.x = platform.x + Math.random() * (platform.width - 40);
+                fire.y = platform.y - fire.height;
+                fire.platform = platformIndex;
+            } else {
+                // Start burning death animation
+                player.burning = true;
+                player.burningTimer = 0;
+            }
+        }
+    }
+    
+    // Hammer pickup
+    for (let hammer of hammers) {
+        if (hammer.active &&
+            player.x + player.width > hammer.x &&
+            player.x < hammer.x + 20 &&
+            player.y + player.height > hammer.y &&
+            player.y < hammer.y + 20) {
+            
+            player.hasHammer = true;
+            player.hammerTimer = 300;
+            hammer.active = false;
+            score += 100;
+        }
+    }
+    
+    // Item collection
+    for (let item of items) {
+        if (!item.collected &&
+            player.x + player.width > item.x &&
+            player.x < item.x + 20 &&
+            player.y + player.height > item.y &&
+            player.y < item.y + 20) {
+            
+            item.collected = true;
+            score += item.points;
+        }
+    }
+}
+
+// Lose a life
+function loseLife() {
+    lives--;
+    player.burning = false;
+    player.burningTimer = 0;
+    
+    if (lives <= 0) {
+        gameOver();
+    } else {
+        // Reset player
+        player.x = 80;
+        player.y = 650;
+        player.vx = 0;
+        player.vy = 0;
+        player.hasHammer = false;
+        player.onElevator = false;
+        player.currentElevator = null;
+    }
+}
+
+// Level complete
+function levelComplete() {
+    score += bonus;
+    score += 1000;
+    level++;
+    
+    gameState = 'levelComplete';
+    setTimeout(() => {
+        gameState = 'playing';
+        setupLevel(level);
+    }, 3000);
+}
+
+// Game over
+function gameOver() {
+    if (score > highScore) {
+        highScore = score;
+    }
+    gameState = 'gameOver';
+}
+
+// Draw everything
+function draw() {
+    // Clear canvas with fade effect
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Update glow
+    glowIntensity += glowDir * 0.02;
+    if (glowIntensity > 1) {
+        glowIntensity = 1;
+        glowDir = -1;
+    } else if (glowIntensity < 0) {
+        glowIntensity = 0;
+        glowDir = 1;
+    }
+    
+    if (gameState === 'title') {
+        drawTitle();
+    } else if (gameState === 'playing') {
+        drawGame();
+    } else if (gameState === 'levelComplete') {
+        drawGame();
+        drawText('LEVEL COMPLETE!', canvas.width / 2, canvas.height / 2, 32, '#0ff', 'center');
+        drawText(`BONUS: ${bonus}`, canvas.width / 2, canvas.height / 2 + 40, 24, '#ff0', 'center');
+    } else if (gameState === 'gameOver') {
+        drawGame();
+        drawText('GAME OVER', canvas.width / 2, canvas.height / 2, 32, '#f00', 'center');
+        drawText('Press ENTER to restart', canvas.width / 2, canvas.height / 2 + 40, 16, '#fff', 'center');
+    }
+    
+    frameCount++;
+}
+
+// Draw title screen
+function drawTitle() {
+    drawText('VECTOR', canvas.width / 2, 200, 48, '#f0f', 'center');
+    drawText('KONG', canvas.width / 2, 260, 64, '#0ff', 'center');
+    drawText('Press ENTER to Start', canvas.width / 2, 400, 20, '#fff', 'center');
+    drawText(`HIGH SCORE: ${highScore}`, canvas.width / 2, 500, 16, '#ff0', 'center');
+    
+    // Draw animated DK
+    drawDK(canvas.width / 2 - 40, 300, frameCount);
+}
+
+// Draw game
+function drawGame() {
+    // Draw platforms
+    for (let platform of platforms) {
+        drawPlatform(platform);
+    }
+    
+    // Draw ladders
+    for (let ladder of ladders) {
+        drawLadder(ladder);
+    }
+    
+    // Draw elevators
+    for (let elevator of elevators) {
+        drawElevator(elevator);
+    }
+    
+    // Draw items
+    for (let item of items) {
+        if (!item.collected) {
+            if (item.type === 'hat') {
+                drawRect(item.x, item.y, 16, 12, '#f0f');
+                drawLine(item.x + 4, item.y + 4, item.x + 12, item.y + 4, '#f0f', 2);
+            } else if (item.type === 'purse') {
+                drawRect(item.x, item.y, 14, 16, '#f0f');
+                drawLine(item.x + 2, item.y, item.x + 12, item.y, '#f0f', 2);
+            }
+        }
+    }
+    
+    // Draw hammers
+    for (let hammer of hammers) {
+        if (hammer.active) {
+            drawRect(hammer.x, hammer.y, 20, 16, '#ff0');
+            drawLine(hammer.x + 10, hammer.y + 16, hammer.x + 10, hammer.y + 30, '#ff0', 2);
+        }
+    }
+    
+    // Draw barrels
+    for (let barrel of barrels) {
+        drawBarrel(barrel.x, barrel.y, barrel.fallThrough);
+    }
+    
+    // Draw fires
+    for (let fire of fires) {
+        drawFire(fire.x, fire.y, fire.frame);
+    }
+    
+    // Draw DK
+    drawDK(dk.x, dk.y, dk.frame);
+    
+    // Draw Pauline
+    drawPauline(pauline.x, pauline.y, frameCount);
+    
+    // Draw player
+    drawPlayer(player.x, player.y, player.facing, player.frame, player.hasHammer, player.burning);
+    
+    // Draw HUD
+    drawText(`SCORE: ${score}`, 20, 30, 16, '#ff0');
+    drawText(`LEVEL: ${level}`, 200, 30, 16, '#0ff');
+    drawText(`BONUS: ${bonus}`, 350, 30, 16, '#f0f');
+    drawText(`LIVES: ${lives}`, 20, 50, 16, '#fff');
+    
+    // Draw lives as icons
+    for (let i = 0; i < lives; i++) {
+        drawRect(100 + i * 20, 38, 12, 16, '#0ff');
+    }
+}
+
+// Game loop
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+// Input handlers
+window.addEventListener('keydown', (e) => {
+    keys[e.key] = true;
+    
+    if (e.key === 'Enter') {
+        if (gameState === 'title' || gameState === 'gameOver') {
+            score = 0;
+            lives = 3;
+            level = 1;
+            gameState = 'playing';
+            setupLevel(level);
+        }
+    }
+    
+    // Prevent scrolling with arrow keys
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+        e.preventDefault();
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    keys[e.key] = false;
+});
+
+    </script>
+</body>
+</html>

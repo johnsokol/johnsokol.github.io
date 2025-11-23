@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crystal Quest</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background: #1a1a1a;
+      font-family: 'VT323', monospace;
+      color: #00ff00;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    #gameContainer {
+      position: relative;
+      background: #000;
+      border: 8px solid #333;
+      box-shadow: 0 0 40px rgba(0, 255, 0, 0.3), inset 0 0 20px rgba(0, 255, 0, 0.1);
+      margin-bottom: 30px;
+    }
+    
+    canvas {
+      display: block;
+      background: #000;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 24px;
+      color: #fff;
+      text-shadow: 2px 2px 4px #000;
+      pointer-events: none;
+      z-index: 10;
+    }
+    
+    #startScreen, #gameOverScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      color: #fff;
+    }
+    
+    #startScreen h1, #gameOverScreen h1 {
+      font-size: 72px;
+      margin-bottom: 20px;
+      text-shadow: 4px 4px 0 #00ff00;
+      letter-spacing: 4px;
+    }
+    
+    #startScreen p, #gameOverScreen p {
+      font-size: 24px;
+      margin: 10px 0;
+      color: #aaa;
+    }
+    
+    button {
+      font-family: 'VT323', monospace;
+      font-size: 32px;
+      padding: 15px 40px;
+      margin: 10px;
+      background: #00ff00;
+      color: #000;
+      border: 4px solid #00ff00;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    
+    button:hover {
+      background: #000;
+      color: #00ff00;
+      box-shadow: 0 0 20px #00ff00;
+    }
+    
+    #leaderboard {
+      width: 800px;
+      max-height: 400px;
+      overflow-y: auto;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 4px solid #00ff00;
+      box-shadow: 0 0 30px rgba(0, 255, 0, 0.4);
+    }
+    
+    #leaderboard::-webkit-scrollbar {
+      width: 10px;
+    }
+    
+    #leaderboard::-webkit-scrollbar-track {
+      background: #000;
+      border: 1px solid #00ff00;
+    }
+    
+    #leaderboard::-webkit-scrollbar-thumb {
+      background: #00ff00;
+      border-radius: 5px;
+    }
+    
+    #leaderboard::-webkit-scrollbar-thumb:hover {
+      background: #0f0;
+    }
+    
+    #leaderboard::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    #leaderboard::-webkit-scrollbar-track {
+      background: #000;
+    }
+    
+    #leaderboard::-webkit-scrollbar-thumb {
+      background: #00ff00;
+      border-radius: 4px;
+    }
+    
+    #leaderboard2 {
+      margin-top: 30px;
+      max-height: 300px;
+      overflow-y: auto;
+      width: 400px;
+    }
+    
+    #leaderboard h2, #leaderboard2 h2 {
+      font-size: 42px;
+      margin-bottom: 20px;
+      color: #00ff00;
+      text-align: center;
+      text-shadow: 3px 3px 0 #000;
+    }
+    
+    .leaderboard-entry {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 15px;
+      margin: 5px 0;
+      background: rgba(0, 255, 0, 0.1);
+      border-left: 3px solid #00ff00;
+    }
+    
+    .leaderboard-entry.current {
+      background: rgba(0, 255, 0, 0.3);
+      border-left: 3px solid #fff;
+    }
+    
+    #nameInput {
+      font-family: 'VT323', monospace;
+      font-size: 28px;
+      padding: 10px 20px;
+      margin: 15px 0;
+      background: #000;
+      color: #00ff00;
+      border: 3px solid #00ff00;
+      text-align: center;
+      letter-spacing: 2px;
+    }
+    
+    #nameInput:focus {
+      outline: none;
+      box-shadow: 0 0 20px #00ff00;
+    }
+    
+    .crystal { color: #0ff; }
+    .mine { color: #f00; }
+    .enemy { color: #f80; }
+    .bomb { color: #ff0; }
+    
+    #instructions {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      color: #888;
+      font-size: 18px;
+    }
+    
+    #betweenWaves {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.95);
+      padding: 40px;
+      border: 4px solid #00ff00;
+      box-shadow: 0 0 40px rgba(0, 255, 0, 0.6);
+      z-index: 60;
+      display: none;
+      text-align: center;
+    }
+    
+    #betweenWaves h2 {
+      font-size: 56px;
+      margin-bottom: 20px;
+      color: #00ff00;
+      text-shadow: 3px 3px 0 #000;
+    }
+    
+    #betweenWaves p {
+      font-size: 28px;
+      margin: 10px 0;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <div id="ui">
+      <div>
+        <span>SCORE: <span id="score">0</span></span>
+        <span style="margin-left: 30px;">WAVE: <span id="wave">1</span></span>
+      </div>
+      <div>
+        <span>LIVES: <span id="lives">3</span></span>
+        <span style="margin-left: 30px;" class="bomb">BOMBS: <span id="bombs">0</span></span>
+      </div>
+    </div>
+    
+    <div id="startScreen">
+      <h1>CRYSTAL QUEST</h1>
+      <p>By Patrick Buckland, 1987-94</p>
+      <p style="margin-top: 30px;">Move mouse to control ship</p>
+      <p>Click to fire • Space for smart bomb</p>
+      <p class="crystal">Collect all crystals to open gateway</p>
+      <p class="mine">Avoid the mines</p>
+      <p class="enemy">Enemies spawn from portals on left & right</p>
+      <p class="enemy">Destroy meteors and nasties or avoid them</p>
+      <button id="startBtn">START GAME</button>
+      <div id="instructions">
+        Bonus life every 15,000 points
+      </div>
+    </div>
+    
+    
+    <div id="betweenWaves">
+      <h2>WAVE COMPLETE!</h2>
+      <p>Wave: <span id="completedWave">1</span></p>
+      <p>Bonus: <span id="waveBonus">1000</span> pts</p>
+      <p style="margin-top: 20px; color: #00ff00;">GET READY...</p>
+    </div>
+    
+    <div id="gameOverScreen" style="display: none;">
+      <h1>GAME OVER</h1>
+      <p>FINAL SCORE: <span id="finalScore">0</span></p>
+      <p>WAVE REACHED: <span id="finalWave">1</span></p>
+      <input type="text" id="nameInput" placeholder="ENTER NAME" maxlength="15">
+      <button id="submitScore">SUBMIT SCORE</button>
+      <button id="restartBtn">PLAY AGAIN</button>
+      <div id="leaderboard2"></div>
+    </div>
+  </div>
+
+  <!-- Leaderboard Section Below Game -->
+  <div id="leaderboard">
+    <h2>HIGH SCORES</h2>
+    <p style="color: #888; text-align: center;">Loading scores...</p>
+  </div>
+
+  <script type="module">
+    // Firebase configuration - Same as Vector Kong
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD9GvYoq4j3XginipLtbWOvaW1dEFdOfIs",
+      authDomain: "vector-kong-leaderboard.firebaseapp.com",
+      projectId: "vector-kong-leaderboard",
+      storageBucket: "vector-kong-leaderboard.firebasestorage.app",
+      messagingSenderId: "899598987750",
+      appId: "1:899598987750:web:79608ee3198585d15aa627",
+      measurementId: "G-7V4FZD1HSG"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    
+    // Sound Effects using Web Audio API
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    const sounds = {
+      shoot: () => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = 800;
+        gain.gain.value = 0.1;
+        osc.start();
+        osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.stop(audioCtx.currentTime + 0.1);
+      },
+      
+      collect: () => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = 400;
+        gain.gain.value = 0.15;
+        osc.start();
+        osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+        osc.stop(audioCtx.currentTime + 0.15);
+      },
+      
+      explosion: () => {
+        const bufferSize = audioCtx.sampleRate * 0.3;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+        }
+        const source = audioCtx.createBufferSource();
+        const gain = audioCtx.createGain();
+        source.buffer = buffer;
+        source.connect(gain);
+        gain.connect(audioCtx.destination);
+        gain.gain.value = 0.2;
+        source.start();
+      },
+      
+      smartBomb: () => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = 100;
+        gain.gain.value = 0.3;
+        osc.start();
+        osc.frequency.exponentialRampToValueAtTime(2000, audioCtx.currentTime + 0.3);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.stop(audioCtx.currentTime + 0.3);
+      },
+      
+      death: () => {
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc1.frequency.value = 600;
+        osc2.frequency.value = 610;
+        gain.gain.value = 0.2;
+        osc1.start();
+        osc2.start();
+        osc1.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.5);
+        osc2.frequency.exponentialRampToValueAtTime(105, audioCtx.currentTime + 0.5);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        osc1.stop(audioCtx.currentTime + 0.5);
+        osc2.stop(audioCtx.currentTime + 0.5);
+      },
+      
+      gateway: () => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = 200;
+        gain.gain.value = 0.15;
+        osc.type = 'sine';
+        osc.start();
+        for (let i = 0; i < 5; i++) {
+          osc.frequency.setValueAtTime(200 + i * 100, audioCtx.currentTime + i * 0.1);
+        }
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        osc.stop(audioCtx.currentTime + 0.5);
+      }
+    };
+    
+    // Game setup
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let game = {
+      running: false,
+      score: 0,
+      wave: 1,
+      lives: 3,
+      smartBombs: 0,
+      nextLifeAt: 15000,
+      crystalsCollected: 0,
+      totalCrystals: 0,
+      gatewayOpen: false,
+      invulnerable: false,
+      invulnerableTime: 0
+    };
+    
+    // Player
+    const player = {
+      x: 400,
+      y: 300,
+      vx: 0,
+      vy: 0,
+      radius: 12,
+      targetX: 400,
+      targetY: 300
+    };
+    
+    // Game objects
+    let crystals = [];
+    let mines = [];
+    let enemies = [];
+    let bullets = [];
+    let particles = [];
+    let gateway = null;
+    let portals = [];
+    let enemySpawnTimer = 0;
+    
+    // Mouse tracking
+    let mouseX = 400;
+    let mouseY = 300;
+    
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      mouseX = e.clientX - rect.left;
+      mouseY = e.clientY - rect.top;
+    });
+    
+    canvas.addEventListener('click', (e) => {
+      if (game.running) {
+        shoot();
+      }
+    });
+    
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && game.running && game.smartBombs > 0) {
+        e.preventDefault();
+        useSmartBomb();
+      }
+    });
+    
+    // Initialize wave
+    function initWave() {
+      crystals = [];
+      mines = [];
+      enemies = [];
+      bullets = [];
+      gateway = null;
+      portals = [];
+      game.gatewayOpen = false;
+      game.crystalsCollected = 0;
+      enemySpawnTimer = 0;
+      
+      // Create portals on left and right
+      portals = [
+        {
+          x: 40,
+          y: canvas.height / 2,
+          side: 'left',
+          spawnTimer: 0,
+          spawnRate: Math.max(60, 180 - game.wave * 10),
+          animation: 0
+        },
+        {
+          x: canvas.width - 40,
+          y: canvas.height / 2,
+          side: 'right',
+          spawnTimer: 0,
+          spawnRate: Math.max(60, 180 - game.wave * 10),
+          animation: 0
+        }
+      ];
+      
+      // Spawn crystals (more each wave)
+      const numCrystals = 5 + Math.floor(game.wave * 1.5);
+      game.totalCrystals = numCrystals;
+      
+      for (let i = 0; i < numCrystals; i++) {
+        crystals.push({
+          x: Math.random() * (canvas.width - 200) + 100,
+          y: Math.random() * (canvas.height - 100) + 50,
+          radius: 8,
+          angle: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 0.1
+        });
+      }
+      
+      // Spawn mines
+      const numMines = 2 + game.wave;
+      for (let i = 0; i < numMines; i++) {
+        mines.push({
+          x: Math.random() * (canvas.width - 200) + 100,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 2,
+          vy: (Math.random() - 0.5) * 2,
+          radius: 10
+        });
+      }
+      
+      // Occasionally spawn smart bomb bonus
+      if (Math.random() < 0.3) {
+        crystals.push({
+          x: Math.random() * (canvas.width - 200) + 100,
+          y: Math.random() * (canvas.height - 100) + 50,
+          radius: 8,
+          isBomb: true
+        });
+      }
+      
+      player.x = canvas.width / 2;
+      player.y = canvas.height / 2;
+      player.vx = 0;
+      player.vy = 0;
+    }
+    
+    // Shooting
+    function shoot() {
+      sounds.shoot();
+      const angle = Math.atan2(player.vy, player.vx);
+      bullets.push({
+        x: player.x,
+        y: player.y,
+        vx: Math.cos(angle) * 8 + player.vx,
+        vy: Math.sin(angle) * 8 + player.vy,
+        radius: 3,
+        life: 60
+      });
+    }
+    
+    // Smart bomb
+    function useSmartBomb() {
+      sounds.smartBomb();
+      game.smartBombs--;
+      
+      // Kill all enemies and mines
+      let scoreBonus = 0;
+      enemies.forEach(enemy => {
+        createExplosion(enemy.x, enemy.y, 20);
+        scoreBonus += enemy.type === 'meteor' ? 200 : 100;
+      });
+      mines.forEach(mine => {
+        createExplosion(mine.x, mine.y, 15);
+      });
+      
+      enemies = [];
+      mines = [];
+      
+      game.score += scoreBonus;
+      updateUI();
+    }
+    
+    // Create explosion particles
+    function createExplosion(x, y, count) {
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count;
+        particles.push({
+          x: x,
+          y: y,
+          vx: Math.cos(angle) * (2 + Math.random() * 3),
+          vy: Math.sin(angle) * (2 + Math.random() * 3),
+          life: 30,
+          maxLife: 30,
+          radius: 2 + Math.random() * 3
+        });
+      }
+    }
+    
+    // Update game state
+    function update() {
+      if (!game.running) return;
+      
+      // Update invulnerability
+      if (game.invulnerable) {
+        game.invulnerableTime--;
+        if (game.invulnerableTime <= 0) {
+          game.invulnerable = false;
+        }
+      }
+      
+      // Player movement (smooth following)
+      const dx = mouseX - player.x;
+      const dy = mouseY - player.y;
+      player.vx = dx * 0.1;
+      player.vy = dy * 0.1;
+      player.x += player.vx;
+      player.y += player.vy;
+      
+      // Keep player in bounds
+      player.x = Math.max(20, Math.min(canvas.width - 20, player.x));
+      player.y = Math.max(20, Math.min(canvas.height - 20, player.y));
+      
+      // Update crystals
+      crystals.forEach(crystal => {
+        if (!crystal.isBomb) {
+          crystal.angle += crystal.spin;
+        }
+        
+        // Check collection
+        const dist = Math.hypot(player.x - crystal.x, player.y - crystal.y);
+        if (dist < player.radius + crystal.radius) {
+          sounds.collect();
+          
+          if (crystal.isBomb) {
+            game.smartBombs++;
+            game.score += 100;
+          } else {
+            game.crystalsCollected++;
+            game.score += 50;
+          }
+          
+          crystals.splice(crystals.indexOf(crystal), 1);
+          createExplosion(crystal.x, crystal.y, 8);
+          
+          // Check for bonus life
+          if (game.score >= game.nextLifeAt) {
+            game.lives++;
+            game.nextLifeAt += 15000;
+            sounds.gateway();
+          }
+          
+          updateUI();
+          
+          // Open gateway if all collected
+          if (game.crystalsCollected >= game.totalCrystals && !game.gatewayOpen) {
+            openGateway();
+          }
+        }
+      });
+      
+      // Update mines
+      mines.forEach(mine => {
+        mine.x += mine.vx;
+        mine.y += mine.vy;
+        
+        // Bounce off walls
+        if (mine.x < mine.radius || mine.x > canvas.width - mine.radius) {
+          mine.vx *= -1;
+        }
+        if (mine.y < mine.radius || mine.y > canvas.height - mine.radius) {
+          mine.vy *= -1;
+        }
+        
+        // Check collision with player
+        if (!game.invulnerable) {
+          const dist = Math.hypot(player.x - mine.x, player.y - mine.y);
+          if (dist < player.radius + mine.radius) {
+            hitPlayer();
+          }
+        }
+      });
+      
+      // Update portals and spawn enemies
+      portals.forEach(portal => {
+        portal.animation += 0.1;
+        portal.spawnTimer++;
+        
+        if (portal.spawnTimer >= portal.spawnRate) {
+          portal.spawnTimer = 0;
+          
+          // Spawn enemy from portal
+          const enemyType = Math.random();
+          const newEnemy = {
+            x: portal.x + (portal.side === 'left' ? 30 : -30),
+            y: portal.y + (Math.random() - 0.5) * 40,
+            vx: 0,
+            vy: 0,
+            radius: 12,
+            health: 1 + Math.floor(game.wave / 3)
+          };
+          
+          // 30% chance for meteor type
+          if (enemyType < 0.3) {
+            newEnemy.type = 'meteor';
+            newEnemy.radius = 15;
+            newEnemy.health = 2 + Math.floor(game.wave / 2);
+            newEnemy.rotation = Math.random() * Math.PI * 2;
+            newEnemy.rotationSpeed = (Math.random() - 0.5) * 0.2;
+            // Meteors move more erratically
+            const angle = Math.random() * Math.PI * 2;
+            newEnemy.vx = Math.cos(angle) * (1 + Math.random() * 2);
+            newEnemy.vy = Math.sin(angle) * (1 + Math.random() * 2);
+          } else {
+            newEnemy.type = 'nasty';
+          }
+          
+          enemies.push(newEnemy);
+        }
+      });
+      
+      // Update enemies
+      enemies.forEach(enemy => {
+        if (enemy.type === 'meteor') {
+          // Meteors move in a more chaotic way
+          enemy.rotation += enemy.rotationSpeed;
+          enemy.x += enemy.vx;
+          enemy.y += enemy.vy;
+          
+          // Occasionally change direction
+          if (Math.random() < 0.02) {
+            const angle = Math.random() * Math.PI * 2;
+            enemy.vx += Math.cos(angle) * 0.5;
+            enemy.vy += Math.sin(angle) * 0.5;
+          }
+          
+          // Limit speed
+          const speed = Math.hypot(enemy.vx, enemy.vy);
+          if (speed > 3) {
+            enemy.vx = (enemy.vx / speed) * 3;
+            enemy.vy = (enemy.vy / speed) * 3;
+          }
+          
+          // Bounce off walls
+          if (enemy.x < enemy.radius || enemy.x > canvas.width - enemy.radius) {
+            enemy.vx *= -0.8;
+          }
+          if (enemy.y < enemy.radius || enemy.y > canvas.height - enemy.radius) {
+            enemy.vy *= -0.8;
+          }
+        } else {
+          // Nasty enemies - random walk toward player (less efficient)
+          const dx = player.x - enemy.x;
+          const dy = player.y - enemy.y;
+          const dist = Math.hypot(dx, dy);
+          
+          // Only move toward player 40% of the time, otherwise random movement
+          if (Math.random() < 0.4 && dist > 0) {
+            // Move vaguely toward player with some randomness
+            const randomAngle = (Math.atan2(dy, dx) + (Math.random() - 0.5) * Math.PI * 0.8);
+            enemy.vx += Math.cos(randomAngle) * 0.08;
+            enemy.vy += Math.sin(randomAngle) * 0.08;
+          } else {
+            // Random wandering
+            const randomAngle = Math.random() * Math.PI * 2;
+            enemy.vx += Math.cos(randomAngle) * 0.05;
+            enemy.vy += Math.sin(randomAngle) * 0.05;
+          }
+          
+          // Limit speed
+          const speed = Math.hypot(enemy.vx, enemy.vy);
+          if (speed > 1.5) {
+            enemy.vx = (enemy.vx / speed) * 1.5;
+            enemy.vy = (enemy.vy / speed) * 1.5;
+          }
+          
+          enemy.x += enemy.vx;
+          enemy.y += enemy.vy;
+          
+          // Keep in bounds
+          if (enemy.x < 0 || enemy.x > canvas.width) enemy.vx *= -1;
+          if (enemy.y < 0 || enemy.y > canvas.height) enemy.vy *= -1;
+        }
+        
+        // Check collision with player
+        if (!game.invulnerable) {
+          const dist2 = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+          if (dist2 < player.radius + enemy.radius) {
+            hitPlayer();
+          }
+        }
+      });
+      
+      // Update bullets
+      bullets = bullets.filter(bullet => {
+        bullet.x += bullet.vx;
+        bullet.y += bullet.vy;
+        bullet.life--;
+        
+        // Remove if off screen or expired
+        if (bullet.life <= 0 || bullet.x < 0 || bullet.x > canvas.width || 
+            bullet.y < 0 || bullet.y > canvas.height) {
+          return false;
+        }
+        
+        // Check collision with enemies
+        for (let enemy of enemies) {
+          const dist = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
+          if (dist < bullet.radius + enemy.radius) {
+            enemy.health--;
+            if (enemy.health <= 0) {
+              sounds.explosion();
+              createExplosion(enemy.x, enemy.y, 15);
+              enemies.splice(enemies.indexOf(enemy), 1);
+              
+              // Different scores for different enemy types
+              const scoreValue = enemy.type === 'meteor' ? 200 : 100;
+              game.score += scoreValue;
+              updateUI();
+            }
+            return false;
+          }
+        }
+        
+        return true;
+      });
+      
+      // Update particles
+      particles = particles.filter(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+        return p.life > 0;
+      });
+      
+      // Update gateway
+      if (gateway) {
+        gateway.angle += 0.05;
+        
+        // Check if player entered gateway
+        const dist = Math.hypot(player.x - gateway.x, player.y - gateway.y);
+        if (dist < 30) {
+          sounds.gateway();
+          game.wave++;
+          game.score += 1000;
+          updateUI();
+          initWave();
+          showBetweenWaves();
+        }
+      }
+    }
+    
+    // Open gateway
+    function openGateway() {
+      sounds.gateway();
+      game.gatewayOpen = true;
+      gateway = {
+        x: Math.random() * (canvas.width - 100) + 50,
+        y: Math.random() * (canvas.height - 100) + 50,
+        angle: 0
+      };
+    }
+    
+    // Show between waves screen
+    function showBetweenWaves() {
+      game.running = false;
+      document.getElementById('completedWave').textContent = game.wave - 1;
+      document.getElementById('waveBonus').textContent = 1000;
+      document.getElementById('betweenWaves').style.display = 'block';
+      
+      // Refresh the main leaderboard below
+      loadLeaderboard('leaderboard', false);
+      
+      setTimeout(() => {
+        document.getElementById('betweenWaves').style.display = 'none';
+        game.running = true;
+      }, 3000);
+    }
+    
+    // Player hit
+    function hitPlayer() {
+      sounds.death();
+      game.lives--;
+      updateUI();
+      
+      createExplosion(player.x, player.y, 25);
+      
+      if (game.lives <= 0) {
+        gameOver();
+      } else {
+        game.invulnerable = true;
+        game.invulnerableTime = 120;
+        player.x = canvas.width / 2;
+        player.y = canvas.height / 2;
+      }
+    }
+    
+    // Draw everything
+    function draw() {
+      // Clear screen
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw crystals
+      crystals.forEach(crystal => {
+        if (crystal.isBomb) {
+          // Smart bomb icon
+          ctx.fillStyle = '#ff0';
+          ctx.beginPath();
+          ctx.arc(crystal.x, crystal.y, crystal.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#f80';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        } else {
+          // Crystal drawing
+          ctx.save();
+          ctx.translate(crystal.x, crystal.y);
+          ctx.rotate(crystal.angle);
+          ctx.strokeStyle = '#0ff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let i = 0; i < 8; i++) {
+            const angle = (Math.PI * 2 * i) / 8;
+            const r = i % 2 === 0 ? crystal.radius : crystal.radius * 0.5;
+            const x = Math.cos(angle) * r;
+            const y = Math.sin(angle) * r;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+      
+      // Draw mines
+      ctx.fillStyle = '#f00';
+      mines.forEach(mine => {
+        ctx.beginPath();
+        ctx.arc(mine.x, mine.y, mine.radius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Spikes
+        ctx.strokeStyle = '#f00';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 8; i++) {
+          const angle = (Math.PI * 2 * i) / 8;
+          ctx.beginPath();
+          ctx.moveTo(mine.x, mine.y);
+          ctx.lineTo(
+            mine.x + Math.cos(angle) * mine.radius * 1.5,
+            mine.y + Math.sin(angle) * mine.radius * 1.5
+          );
+          ctx.stroke();
+        }
+      });
+      
+      // Draw portals
+      portals.forEach(portal => {
+        ctx.save();
+        ctx.translate(portal.x, portal.y);
+        
+        // Portal structure - grid pattern
+        ctx.strokeStyle = '#888';
+        ctx.lineWidth = 2;
+        
+        // Outer frame
+        ctx.strokeRect(-20, -40, 40, 80);
+        
+        // Grid lines
+        for (let i = 0; i < 4; i++) {
+          const y = -40 + (i + 1) * 16;
+          ctx.beginPath();
+          ctx.moveTo(-20, y);
+          ctx.lineTo(20, y);
+          ctx.stroke();
+        }
+        
+        for (let i = 0; i < 2; i++) {
+          const x = -20 + (i + 1) * 13.3;
+          ctx.beginPath();
+          ctx.moveTo(x, -40);
+          ctx.lineTo(x, 40);
+          ctx.stroke();
+        }
+        
+        // Pulsing energy in the center
+        const pulse = Math.sin(portal.animation) * 0.3 + 0.7;
+        ctx.fillStyle = `rgba(0, 255, 255, ${pulse * 0.3})`;
+        ctx.fillRect(-15, -35, 30, 70);
+        
+        // Energy particles
+        for (let i = 0; i < 3; i++) {
+          const y = ((portal.animation * 50 + i * 25) % 70) - 35;
+          ctx.fillStyle = `rgba(0, 255, 255, ${pulse})`;
+          ctx.fillRect(-10, y, 20, 5);
+        }
+        
+        ctx.restore();
+      });
+      
+      // Draw enemies
+      enemies.forEach(enemy => {
+        if (enemy.type === 'meteor') {
+          // Meteor - jagged, irregular shape
+          ctx.save();
+          ctx.translate(enemy.x, enemy.y);
+          ctx.rotate(enemy.rotation);
+          
+          ctx.fillStyle = '#aaa';
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2;
+          
+          // Irregular meteor shape
+          ctx.beginPath();
+          const points = 12;
+          for (let i = 0; i < points; i++) {
+            const angle = (Math.PI * 2 * i) / points;
+            const variance = Math.sin(i * 2.3) * 0.4 + 0.8;
+            const r = enemy.radius * variance;
+            const x = Math.cos(angle) * r;
+            const y = Math.sin(angle) * r;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          
+          // Craters/details
+          ctx.fillStyle = '#666';
+          for (let i = 0; i < 3; i++) {
+            const angle = (Math.PI * 2 * i) / 3;
+            const x = Math.cos(angle) * enemy.radius * 0.4;
+            const y = Math.sin(angle) * enemy.radius * 0.4;
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          
+          ctx.restore();
+        } else {
+          // Nasty enemies - tentacled creatures
+          ctx.fillStyle = '#f80';
+          ctx.strokeStyle = '#f80';
+          ctx.lineWidth = 2;
+          
+          // Enemy body
+          ctx.beginPath();
+          ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Tentacles
+          for (let i = 0; i < 4; i++) {
+            const angle = (Math.PI * 2 * i) / 4 + Date.now() * 0.005;
+            ctx.beginPath();
+            ctx.moveTo(enemy.x, enemy.y);
+            ctx.lineTo(
+              enemy.x + Math.cos(angle) * enemy.radius * 1.3,
+              enemy.y + Math.sin(angle) * enemy.radius * 1.3
+            );
+            ctx.stroke();
+          }
+        }
+      });
+      
+      // Draw bullets
+      ctx.fillStyle = '#fff';
+      bullets.forEach(bullet => {
+        ctx.beginPath();
+        ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      
+      // Draw particles
+      particles.forEach(p => {
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.life / p.maxLife})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      
+      // Draw gateway
+      if (gateway) {
+        ctx.save();
+        ctx.translate(gateway.x, gateway.y);
+        ctx.rotate(gateway.angle);
+        
+        for (let i = 0; i < 3; i++) {
+          ctx.strokeStyle = i === 1 ? '#0f0' : '#080';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, 0, 25 + i * 5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        
+        ctx.restore();
+      }
+      
+      // Draw player
+      if (!game.invulnerable || Math.floor(Date.now() / 100) % 2 === 0) {
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        
+        const angle = Math.atan2(player.vy, player.vx);
+        ctx.rotate(angle);
+        
+        // Ship body
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(player.radius, 0);
+        ctx.lineTo(-player.radius, -player.radius * 0.7);
+        ctx.lineTo(-player.radius * 0.5, 0);
+        ctx.lineTo(-player.radius, player.radius * 0.7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        ctx.restore();
+      }
+    }
+    
+    // Game loop
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+    
+    // Update UI
+    function updateUI() {
+      document.getElementById('score').textContent = game.score;
+      document.getElementById('wave').textContent = game.wave;
+      document.getElementById('lives').textContent = game.lives;
+      document.getElementById('bombs').textContent = game.smartBombs;
+    }
+    
+    // Start game
+    function startGame() {
+      game.running = true;
+      game.score = 0;
+      game.wave = 1;
+      game.lives = 3;
+      game.smartBombs = 0;
+      game.nextLifeAt = 15000;
+      
+      document.getElementById('startScreen').style.display = 'none';
+      updateUI();
+      initWave();
+    }
+    
+    // Game over
+    function gameOver() {
+      game.running = false;
+      document.getElementById('finalScore').textContent = game.score;
+      document.getElementById('finalWave').textContent = game.wave;
+      document.getElementById('gameOverScreen').style.display = 'flex';
+      loadLeaderboard('leaderboard2');
+    }
+    
+    // Leaderboard functions
+    async function loadLeaderboard(elementId, highlightCurrent = false) {
+      try {
+        const scoresRef = collection(db, 'crystalleaderboard');
+        const q = query(scoresRef, orderBy('score', 'desc'), limit(10));
+        const querySnapshot = await getDocs(q);
+        
+        const scores = [];
+        querySnapshot.forEach((doc) => {
+          scores.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        
+        const container = document.getElementById(elementId);
+        
+        // Don't add header if it's the live leaderboard (header is already in HTML)
+        if (elementId !== 'liveLeaderboardContent') {
+          container.innerHTML = '<h2>HIGH SCORES</h2>';
+        } else {
+          container.innerHTML = '';
+        }
+        
+        if (scores.length === 0) {
+          container.innerHTML += '<p style="color: #888;">No scores yet! Be the first!</p>';
+        } else {
+          scores.forEach((score, index) => {
+            const entry = document.createElement('div');
+            entry.className = 'leaderboard-entry';
+            
+            // Highlight if current score would be on leaderboard
+            if (highlightCurrent && game.score >= score.score && !entry.classList.contains('current')) {
+              const wouldBeOnBoard = scores.length < 10 || game.score >= scores[scores.length - 1].score;
+              if (wouldBeOnBoard && index === scores.findIndex(s => game.score >= s.score)) {
+                entry.classList.add('current');
+                entry.innerHTML = `
+                  <span style="color: #ff0;">→ YOU WOULD BE HERE! ←</span>
+                  <span style="color: #ff0;">${game.score} pts</span>
+                `;
+                container.appendChild(entry);
+              }
+            }
+            
+            const entryDisplay = document.createElement('div');
+            entryDisplay.className = 'leaderboard-entry';
+            entryDisplay.innerHTML = `
+              <span>${index + 1}. ${score.name}</span>
+              <span>${score.score} pts (Wave ${score.wave})</span>
+            `;
+            container.appendChild(entryDisplay);
+          });
+          
+          // Add current score at bottom if not on leaderboard
+          if (highlightCurrent && game.score > 0) {
+            const wouldBeOnBoard = scores.length < 10 || game.score >= scores[scores.length - 1].score;
+            if (!wouldBeOnBoard) {
+              const currentEntry = document.createElement('div');
+              currentEntry.className = 'leaderboard-entry current';
+              currentEntry.style.marginTop = '15px';
+              currentEntry.innerHTML = `
+                <span>YOUR SCORE</span>
+                <span>${game.score} pts (Wave ${game.wave})</span>
+              `;
+              container.appendChild(currentEntry);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading leaderboard:', error);
+        const container = document.getElementById(elementId);
+        if (elementId !== 'liveLeaderboardContent') {
+          container.innerHTML = '<h2>HIGH SCORES</h2>';
+        } else {
+          container.innerHTML = '';
+        }
+        container.innerHTML += '<p style="color: #f00;">Error loading scores. Check console.</p>';
+      }
+    }
+    
+    async function submitScore() {
+      const name = document.getElementById('nameInput').value.trim() || 'ANONYMOUS';
+      
+      try {
+        const scoresRef = collection(db, 'crystalleaderboard');
+        await addDoc(scoresRef, {
+          name: name,
+          score: game.score,
+          wave: game.wave,
+          timestamp: Date.now()
+        });
+        
+        document.getElementById('submitScore').disabled = true;
+        document.getElementById('submitScore').textContent = 'SUBMITTED!';
+        
+        // Reload leaderboard to show new score
+        loadLeaderboard('leaderboard2');
+      } catch (error) {
+        console.error('Error submitting score:', error);
+        alert('Error submitting score. Check console for details.');
+      }
+    }
+    
+    // Event listeners
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', () => {
+      document.getElementById('gameOverScreen').style.display = 'none';
+      document.getElementById('submitScore').disabled = false;
+      document.getElementById('submitScore').textContent = 'SUBMIT SCORE';
+      document.getElementById('nameInput').value = '';
+      startGame();
+    });
+    document.getElementById('submitScore').addEventListener('click', submitScore);
+    document.getElementById('nameInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') submitScore();
+    });
+    
+    // Load initial leaderboard silently
+    console.log('🎮 Crystal Quest - Loading leaderboard from Firebase...');
+    loadLeaderboard('leaderboard').then(() => {
+      console.log('✅ Leaderboard loaded successfully!');
+    }).catch(err => {
+      console.error('❌ Error loading leaderboard:', err);
+    });
+    
+    // Start game loop
+    gameLoop();
+  </script>
+</body>
+</html>
