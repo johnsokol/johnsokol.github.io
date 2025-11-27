@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local LLM RSS Filter (WebAssembly)</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+        window.webllm = webllm;
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        function App() {
+            const [feeds, setFeeds] = useState([
+                'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml',
+                'https://feeds.arstechnica.com/arstechnica/index',
+                'https://www.reddit.com/r/technology/.rss',
+            ]);
+            
+            const [newFeedUrl, setNewFeedUrl] = useState('');
+            const [filterCriteria, setFilterCriteria] = useState('artificial intelligence, machine learning, LLMs, AI safety, neural networks');
+            const [articles, setArticles] = useState([]);
+            const [filteredArticles, setFilteredArticles] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [filtering, setFiltering] = useState(false);
+            const [modelLoading, setModelLoading] = useState(false);
+            const [modelReady, setModelReady] = useState(false);
+            const [status, setStatus] = useState('Click "Initialize LLM" to download and load the model');
+            const [downloadProgress, setDownloadProgress] = useState('');
+            
+            const engineRef = useRef(null);
+            const [selectedModel, setSelectedModel] = useState('Llama-3.1-8B-Instruct-q4f32_1-MLC');
+
+            // Available models (smaller ones load faster)
+            const availableModels = [
+                { id: 'Llama-3.1-8B-Instruct-q4f32_1-MLC', name: 'Llama 3.1 8B (4.3GB - Recommended)', size: '4.3GB' },
+                { id: 'Llama-3.2-3B-Instruct-q4f16_1-MLC', name: 'Llama 3.2 3B (1.9GB - Faster)', size: '1.9GB' },
+                { id: 'Llama-3.2-1B-Instruct-q4f16_1-MLC', name: 'Llama 3.2 1B (0.5GB - Fastest)', size: '0.5GB' },
+                { id: 'Phi-3.5-mini-instruct-q4f16_1-MLC', name: 'Phi-3.5 Mini (2.2GB)', size: '2.2GB' },
+            ];
+
+            const initializeLLM = async () => {
+                setModelLoading(true);
+                setStatus('Initializing LLM engine...');
+                
+                try {
+                    const initProgressCallback = (report) => {
+                        setDownloadProgress(report.text);
+                        setStatus(report.text);
+                    };
+
+                    const engine = await window.webllm.CreateMLCEngine(
+                        selectedModel,
+                        { 
+                            initProgressCallback: initProgressCallback,
+                        }
+                    );
+                    
+                    engineRef.current = engine;
+                    setModelReady(true);
+                    setStatus('✅ LLM ready! Model loaded and running locally in your browser.');
+                    setDownloadProgress('');
+                } catch (error) {
+                    setStatus(`❌ Error loading model: ${error.message}`);
+                    console.error(error);
+                } finally {
+                    setModelLoading(false);
+                }
+            };
+
+            const addFeed = () => {
+                if (newFeedUrl && !feeds.includes(newFeedUrl)) {
+                    setFeeds([...feeds, newFeedUrl]);
+                    setNewFeedUrl('');
+                }
+            };
+
+            const removeFeed = (url) => {
+                setFeeds(feeds.filter(f => f !== url));
+            };
+
+            const parseRSSFeed = async (url) => {
+                try {
+                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+                    const response = await fetch(proxyUrl);
+                    const text = await response.text();
+                    
+                    const parser = new DOMParser();
+                    const xml = parser.parseFromString(text, 'text/xml');
+                    
+                    let items = xml.querySelectorAll('item');
+                    if (items.length === 0) {
+                        items = xml.querySelectorAll('entry');
+                    }
+                    
+                    const articles = [];
+                    items.forEach((item, index) => {
+                        if (index < 20) {
+                            const title = item.querySelector('title')?.textContent || '';
+                            const link = item.querySelector('link')?.textContent || 
+                                        item.querySelector('link')?.getAttribute('href') || '';
+                            const description = item.querySelector('description')?.textContent || 
+                                              item.querySelector('summary')?.textContent || 
+                                              item.querySelector('content')?.textContent || '';
+                            const pubDate = item.querySelector('pubDate')?.textContent || 
+                                          item.querySelector('published')?.textContent || '';
+                            
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = description;
+                            const cleanDescription = tempDiv.textContent || tempDiv.innerText || '';
+                            
+                            articles.push({
+                                title,
+                                link,
+                                description: cleanDescription.substring(0, 500),
+                                pubDate,
+                                feedUrl: url,
+                                relevance: null,
+                                reason: ''
+                            });
+                        }
+                    });
+                    
+                    return articles;
+                } catch (error) {
+                    console.error(`Error fetching feed ${url}:`, error);
+                    return [];
+                }
+            };
+
+            const fetchAllFeeds = async () => {
+                setLoading(true);
+                setStatus('Fetching RSS feeds...');
+                const allArticles = [];
+                
+                for (const feedUrl of feeds) {
+                    setStatus(`Fetching: ${feedUrl}`);
+                    const feedArticles = await parseRSSFeed(feedUrl);
+                    allArticles.push(...feedArticles);
+                }
+                
+                setArticles(allArticles);
+                setStatus(`✅ Fetched ${allArticles.length} articles from ${feeds.length} feeds`);
+                setLoading(false);
+            };
+
+            const classifyArticle = async (article) => {
+                if (!engineRef.current) {
+                    throw new Error('LLM not initialized');
+                }
+
+                const prompt = `You are a news classifier. Determine if this article is relevant to these topics: ${filterCriteria}
+
+Article Title: ${article.title}
+Article Description: ${article.description}
+
+Respond ONLY with valid JSON in this exact format:
+{"relevant": true or false, "confidence": 0-100, "reason": "brief explanation"}
+
+DO NOT include any other text, markdown formatting, or code blocks. ONLY output the JSON object.`;
+
+                try {
+                    const reply = await engineRef.current.chat.completions.create({
+                        messages: [{ role: "user", content: prompt }],
+                        temperature: 0.3,
+                        max_tokens: 150,
+                    });
+
+                    let responseText = reply.choices[0].message.content.trim();
+                    
+                    // Clean up response
+                    responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                    
+                    // Try to extract JSON if wrapped in other text
+                    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        responseText = jsonMatch[0];
+                    }
+                    
+                    const result = JSON.parse(responseText);
+                    
+                    return {
+                        ...article,
+                        relevance: result.relevant,
+                        confidence: result.confidence || 50,
+                        reason: result.reason || 'No reason provided'
+                    };
+                } catch (error) {
+                    console.error('Error classifying article:', error);
+                    return {
+                        ...article,
+                        relevance: null,
+                        confidence: 0,
+                        reason: `Error: ${error.message}`
+                    };
+                }
+            };
+
+            const filterArticles = async () => {
+                if (!modelReady) {
+                    alert('Please initialize the LLM first!');
+                    return;
+                }
+                
+                if (articles.length === 0) {
+                    alert('Please fetch feeds first!');
+                    return;
+                }
+                
+                setFiltering(true);
+                setStatus('Filtering articles with local AI...');
+                const classified = [];
+                
+                for (let i = 0; i < articles.length; i++) {
+                    setStatus(`Analyzing article ${i + 1} of ${articles.length}... (100% local, no cloud!)`);
+                    const result = await classifyArticle(articles[i]);
+                    classified.push(result);
+                    
+                    // Small delay to prevent UI blocking
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
+                
+                const relevant = classified.filter(a => a.relevance === true);
+                setFilteredArticles(relevant.sort((a, b) => b.confidence - a.confidence));
+                setStatus(`✅ Found ${relevant.length} relevant articles out of ${articles.length} total (filtered locally!)`);
+                setFiltering(false);
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 p-8">
+                    <div className="max-w-7xl mx-auto">
+                        {/* Header */}
+                        <div className="bg-white rounded-lg shadow-xl p-8 mb-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <h1 className="text-4xl font-bold text-gray-800 mb-2">
+                                        🧠 Local LLM RSS Filter
+                                    </h1>
+                                    <p className="text-gray-600">
+                                        AI-powered news filtering running 100% in your browser via WebAssembly
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <div className="inline-block bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-semibold">
+                                        🔒 100% Local • No Cloud
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Model Initialization */}
+                        <div className="bg-white rounded-lg shadow-xl p-8 mb-6">
+                            <h2 className="text-2xl font-bold text-gray-800 mb-4">1. Initialize Local LLM</h2>
+                            
+                            <div className="mb-4">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Select Model:
+                                </label>
+                                <select 
+                                    value={selectedModel}
+                                    onChange={(e) => setSelectedModel(e.target.value)}
+                                    disabled={modelReady || modelLoading}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100"
+                                >
+                                    {availableModels.map(model => (
+                                        <option key={model.id} value={model.id}>
+                                            {model.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="text-sm text-gray-500 mt-2">
+                                    ⚠️ Model will be downloaded and cached in your browser. Choose smaller models for faster loading.
+                                </p>
+                            </div>
+
+                            <button
+                                onClick={initializeLLM}
+                                disabled={modelLoading || modelReady}
+                                className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+                            >
+                                {modelLoading ? '⏳ Loading Model...' : modelReady ? '✅ Model Ready' : '🚀 Initialize LLM'}
+                            </button>
+
+                            {downloadProgress && (
+                                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                                    <p className="text-sm text-blue-800 font-mono">{downloadProgress}</p>
+                                </div>
+                            )}
+
+                            {modelReady && (
+                                <div className="mt-4 p-4 bg-green-50 rounded-lg">
+                                    <p className="text-green-800 font-semibold">
+                                        ✅ LLM is ready! The model is now running locally in your browser.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* RSS Feed Management */}
+                        <div className="bg-white rounded-lg shadow-xl p-8 mb-6">
+                            <h2 className="text-2xl font-bold text-gray-800 mb-4">2. Configure RSS Feeds</h2>
+                            
+                            <div className="mb-4">
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={newFeedUrl}
+                                        onChange={(e) => setNewFeedUrl(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && addFeed()}
+                                        placeholder="Enter RSS feed URL..."
+                                        className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <button
+                                        onClick={addFeed}
+                                        className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+                                    >
+                                        Add Feed
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2 mb-4">
+                                {feeds.map((feed, index) => (
+                                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                        <span className="text-sm text-gray-700 truncate flex-1">{feed}</span>
+                                        <button
+                                            onClick={() => removeFeed(feed)}
+                                            className="ml-4 text-red-600 hover:text-red-800 font-semibold"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button
+                                onClick={fetchAllFeeds}
+                                disabled={loading}
+                                className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 transition"
+                            >
+                                {loading ? '⏳ Fetching Feeds...' : '📥 Fetch All Feeds'}
+                            </button>
+                        </div>
+
+                        {/* Filter Criteria */}
+                        {articles.length > 0 && (
+                            <div className="bg-white rounded-lg shadow-xl p-8 mb-6">
+                                <h2 className="text-2xl font-bold text-gray-800 mb-4">3. Set Filter Criteria & Run AI</h2>
+                                
+                                <div className="mb-4">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Topics of Interest:
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={filterCriteria}
+                                        onChange={(e) => setFilterCriteria(e.target.value)}
+                                        placeholder="e.g., artificial intelligence, machine learning, AI safety"
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    />
+                                </div>
+
+                                <button
+                                    onClick={filterArticles}
+                                    disabled={filtering || !modelReady}
+                                    className="w-full bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 disabled:bg-gray-400 transition"
+                                >
+                                    {filtering ? '🤖 AI Filtering in Progress...' : '🎯 Filter with Local AI'}
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Status */}
+                        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-xl p-6 mb-6">
+                            <div className="flex items-center">
+                                <div className="text-3xl mr-4">
+                                    {modelLoading ? '⏳' : filtering ? '🤖' : loading ? '📡' : modelReady ? '✅' : '💤'}
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-lg">{status}</p>
+                                    {articles.length > 0 && (
+                                        <p className="text-blue-100 text-sm mt-1">
+                                            {articles.length} articles loaded • {filteredArticles.length} filtered as relevant
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Results */}
+                        {filteredArticles.length > 0 && (
+                            <div className="bg-white rounded-lg shadow-xl p-8">
+                                <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                                    🎯 Relevant Articles ({filteredArticles.length})
+                                </h2>
+                                
+                                <div className="space-y-4">
+                                    {filteredArticles.map((article, index) => (
+                                        <div key={index} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
+                                            <div className="flex items-start justify-between mb-2">
+                                                <h3 className="text-xl font-bold text-gray-800 flex-1">
+                                                    <a href={article.link} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600">
+                                                        {article.title}
+                                                    </a>
+                                                </h3>
+                                                <span className="ml-4 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold whitespace-nowrap">
+                                                    {article.confidence}% match
+                                                </span>
+                                            </div>
+                                            
+                                            <p className="text-gray-600 mb-3">{article.description}</p>
+                                            
+                                            <div className="flex items-center justify-between text-sm">
+                                                <div className="bg-blue-50 text-blue-800 px-3 py-1 rounded-full">
+                                                    💡 {article.reason}
+                                                </div>
+                                                <span className="text-gray-500">{article.pubDate}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Info Footer */}
+                        <div className="mt-8 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-6 border-2 border-indigo-200">
+                            <h3 className="font-bold text-gray-800 mb-2">ℹ️ How It Works:</h3>
+                            <ul className="text-sm text-gray-700 space-y-1">
+                                <li>• <strong>100% Local:</strong> The LLM runs entirely in your browser using WebAssembly + WebGPU</li>
+                                <li>• <strong>Privacy First:</strong> No data sent to any server - everything stays on your machine</li>
+                                <li>• <strong>One-Time Download:</strong> Model is cached in your browser after first load</li>
+                                <li>• <strong>Works Offline:</strong> After initial model download, works without internet</li>
+                                <li>• <strong>Powered by:</strong> Web LLM (MLC), running Llama models compiled to WebAssembly</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
